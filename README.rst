@@ -9,7 +9,7 @@ migrating them to other platforms.
 
 Installation
 ============
-TracBoat is available on `pypi <https://pypi.python.org/pypi/python-automaton>`_,
+TracBoat is available on `pypi <https://pypi.python.org/pypi/tracboat>`_,
 so to install it just type:
 
 .. code::
