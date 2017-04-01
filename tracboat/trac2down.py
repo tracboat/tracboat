@@ -79,34 +79,6 @@ def save_file(text, name, version, date, author, directory):
     fp.write(unicode(text))
     fp.close()
 
-
-if __name__ == "__main__":
-    SQL = '''
-    select
-            name, version, time, author, text
-        from
-            wiki w
-        where
-            version = (select max(version) from wiki where name = w.name)
-'''
-
-    import sqlite3
-
-    conn = sqlite3.connect('../trac.db')
-    result = conn.execute(SQL)
-    for row in result:
-        name = row[0]
-        version = row[1]
-        time = row[2]
-        author = row[3]
-        text = row[4]
-        text = convert(text, '/wikis/')
-        try:
-            time = datetime.datetime.fromtimestamp(time).strftime('%Y/%m/%d %H:%M:%S')
-        except ValueError:
-            time = datetime.datetime.fromtimestamp(time / 1000000).strftime('%Y/%m/%d %H:%M:%S')
-        save_file(text, name, version, time, author, 'wiki/')
-
 '''
 This file is part of <https://gitlab.dyomedea.com/vdv/trac-to-gitlab>.
 
