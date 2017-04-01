@@ -185,9 +185,9 @@ def cli(ctx, config_file, verbose):
     """Toolbox for Trac to GitLab migrations."""
     # Read config file and update context_map
     if config_file:
-        conf = toml.load(config_file)
+        conf = toml.load(config_file).get('tracboat', {})
         ctx.default_map.update(
-            {k: conf for k in ['users', 'migrate', 'model', 'export']})
+            {k: conf for k in ['users', 'migrate', 'export']})
     # Convert verbosity to logging levels
     if verbose == 1:
         level = logging.INFO
