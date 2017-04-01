@@ -1,3 +1,5 @@
+.. image:: https://nazavode.github.io/img/lifeboat-banner.png
+
 ========
 TracBoat
 ========
