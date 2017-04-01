@@ -34,6 +34,7 @@ setup(
     long_description=long_description,
     author="Federico Ficarelli",
     author_email="federico.ficarelli@gmail.com",
+    url="https://github.com/nazavode/tracboat",
     packages=find_packages(),
     install_requires=[
         'peewee',
