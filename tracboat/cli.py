@@ -17,6 +17,7 @@ import peewee
 from bson import json_util
 
 from . import trac
+from . import VERSION
 
 
 CONTEXT_SETTINGS = {
@@ -178,7 +179,7 @@ def GITLAB_OPTIONS(func):
     count=True,
     help='Run in verbose mode'
 )
-@click.version_option('0.0.1')
+@click.version_option(VERSION)
 @click.pass_context
 def cli(ctx, config_file, verbose):
     """Toolbox for Trac to GitLab migrations."""

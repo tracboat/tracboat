@@ -31,7 +31,7 @@ recommended*. After having this repo cloned, just type:
 Dependencies
 ============
 
-* ``Python >= 2.7`` (including ``Python 3.x``)
+* python >= 2.7 (including python 3.x)
 * `peewee <https://pypi.python.org/pypi/peewee>`_
 * `psycopg2 <https://pypi.python.org/pypi/psycopg2>`_
 * `six <https://pypi.python.org/pypi/six>`_
@@ -56,7 +56,7 @@ inherited its `GPLv3 <https://www.gnu.org/licenses/gpl-3.0.en.html>`_ license.
 Changes
 =======
 
-0.9.0 *(unreleased)*
+0.1.0 *(unreleased)*
 --------------------
 
 Added
