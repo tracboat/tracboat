@@ -20,8 +20,8 @@ def _safe_retrieve_data(data, encoding='base64'):
 
 
 def _authors_collect(wiki=None, tickets=None):
-    wiki = wiki or []
-    tickets = tickets or []
+    wiki = wiki or {}
+    tickets = tickets or {}
     return list(set(
         [page['attributes']['author'] for page in six.itervalues(wiki)] + \
         [ticket['attributes']['reporter'] for ticket in six.itervalues(tickets)] + \

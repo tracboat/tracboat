@@ -17,14 +17,16 @@ LOG = logging.getLogger(__name__)
 
 TICKET_PRIORITY_TO_ISSUE_LABEL = {
     'high': 'prio:high',
-    'medium': None,
+    # 'medium': None,
     'low': 'prio:low',
 }
 
 TICKET_RESOLUTION_TO_ISSUE_LABEL = {
-    'high': 'prio:high',
-    'medium': None,
-    'low': 'prio:low',
+    # 'fixed': None,
+    'invalid': 'closed:invalid',
+    'wontfix': 'closed:wontfix',
+    'duplicate': 'closed:duplicate',
+    'worksforme': 'closed:worksforme',
 }
 
 TICKET_STATE_TO_ISSUE_STATE = {
