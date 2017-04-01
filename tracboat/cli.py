@@ -22,7 +22,7 @@ from . import VERSION
 
 CONTEXT_SETTINGS = {
     'max_content_width': 120,
-    'auto_envvar_prefix': 'TRAC2GITLAB',
+    'auto_envvar_prefix': 'TRACBOAT',
     'default_map': {},
 }
 
