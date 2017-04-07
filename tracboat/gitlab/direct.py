@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# vim: autoindent tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=python fileencoding=utf-8
-'''
-Copyright © 2013 - 2014
-    Eric van der Vlist <vdv@dyomedea.com>
-    Jens Neuhalfen <http://www.neuhalfen.name/>
-See license information at the bottom of this file
-'''
-
 import os
 import shutil
 import importlib
@@ -15,77 +7,76 @@ from datetime import datetime
 
 import six
 
+from . import ConnectionBase
+
 
 __all__ = ['Connection']
 
 
-class Connection(object):
-    """
-    Connection to the gitlab database
-    """
+class Connection(ConnectionBase):
 
-    def __init__(self, project, uploads_path, db_model, db_connector):
+    def __init__(self, project_name, db_model, db_connector, uploads_path):
         self.model = db_model
         self.model.database_proxy.initialize(db_connector)
-        # peewee.PostgresqlDatabase(db_name, user=db_user, password=db_password, host=db_path)
         self.uploads_path = uploads_path
-        self.project_name = project
+        super(Connection, self).__init__(project_name)
 
-    def clear_issues(self, project_id):
+    def _get_project_id(self, project_name):
+        project = self.project_by_name(project_name)
+        if not project:
+            raise ValueError("Project {!r} not found".format(project_name))
+        return project["id"]
+
+    def clear_issues(self):
         M = self.model
         # Delete all the uses of the labels of the project.
-        for label in M.Labels.select().where( M.Labels.project == project_id ):
-            M.LabelLinks.delete().where( M.LabelLinks.label == label.id ).execute()
+        for label in M.Labels.select().where(M.Labels.project == self.project_id):
+            M.LabelLinks.delete().where(M.LabelLinks.label == label.id).execute()
             ## You probably do not want to delete the labels themselves, otherwise you'd need to
             ## set their colour every time when you re-run the migration.
             #label.delete_instance()
-
         # Delete issues and everything that goes with them...
-        for issue in M.Issues.select().where(M.Issues.project == project_id):
-            for note in M.Notes.select().where( (M.Notes.project == project_id) & (M.Notes.noteable_type == 'Issue') & (M.Notes.noteable == issue.id)):
+        for issue in M.Issues.select().where(M.Issues.project == self.project_id):
+            for note in M.Notes.select().where(
+                (M.Notes.project == self.project_id) & \
+                (M.Notes.noteable_type == 'Issue') & \
+                (M.Notes.noteable == issue.id)):
                 if note.attachment != None:
                     directory = os.path.join(self.uploads_path, 'note/attachment/%s' % note.id)
-                    try:
-                        shutil.rmtree(directory)
-                    except:
-                        pass
-                M.Events.delete().where( (M.Events.project == project_id) & (M.Events.target_type == 'Note' ) & (M.Events.target == note.id) ).execute()
+                    shutil.rmtree(directory, ignore_errors=True)
+                M.Events.delete().where(
+                    (M.Events.project == self.project_id) & \
+                    (M.Events.target_type == 'Note') & \
+                    (M.Events.target == note.id)).execute()
                 note.delete_instance()
-
-            M.Events.delete().where( (M.Events.project == project_id) & (M.Events.target_type == 'Issue' ) & (M.Events.target == issue.id) ).execute()
+            M.Events.delete().where(
+                (M.Events.project == self.project_id) & \
+                (M.Events.target_type == 'Issue') & \
+                (M.Events.target == issue.id)).execute()
             issue.delete_instance()
+        M.Milestones.delete().where(
+            M.Milestones.project == self.project_id).execute()
 
-        M.Milestones.delete().where( M.Milestones.project == project_id ).execute()
-
-    def milestone_by_name(self, project_id, milestone_name):
+    def get_milestone(self, milestone_name):
         M = self.model
-        for milestone in M.Milestones.select().where((M.Milestones.title == milestone_name) & (M.Milestones.project == project_id)):
+        for milestone in M.Milestones.select().where(  # TODO why a loop here?
+                (M.Milestones.title == milestone_name) & \
+                (M.Milestones.project == project_id)):
             return milestone._data
         return None
 
-    def project_by_name(self, project_name):
+    def get_project(self):
         M = self.model
-        (namespace, name) = project_name.split('/')
-        print(name)
-        for project in M.Projects.select().join(M.Namespaces, on=(M.Projects.namespace == M.Namespaces.id )).where((M.Projects.path == name) & (M.Namespaces.path == namespace)):
-            print(project._data)
+        (namespace, name) = self.project_name.split('/')  # TODO provide namespace and name at baseclass level
+        for project in M.Projects.select().join(M.Namespaces,    # TODO why a loop here?
+                on=(M.Projects.namespace == M.Namespaces.id )).where(
+                    (M.Projects.path == name) & (M.Namespaces.path == namespace)):
             return project._data
         return None
 
-    def project_id(self):
-        return self.project_id_by_name(self.project_name)
-
-    def project_id_by_name(self, project_name):
-        project = self.project_by_name(project_name)
-        if not project:
-            raise ValueError("Project '%s' not found" % project_name)
-        return project["id"]
-
-    def milestone_id_by_name(self, project_id, milestone_name):
-        milestone = self.milestone_by_name(project_id, milestone_name)
-        if not milestone:
-            raise ValueError("Milestone '%s' of project '%s' not found" % (milestone_name, project_id))
-        return milestone["id"]
+    def get_milestone_id(self, milestone_name):
+        milestone = self.get_milestone(self.project_id, milestone_name)
+        return milestone["id"] if milestone else None
 
     def get_user_id(self, username):
         M = self.model
@@ -183,21 +174,3 @@ class Connection(object):
         f = open(full_path, "wb")
         f.write(six.b(binary))
         f.close()
-
-
-'''
-This file is part of <https://gitlab.dyomedea.com/vdv/trac-to-gitlab>.
-
-This sotfware is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This sotfware is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with this library. If not, see <http://www.gnu.org/licenses/>.
-'''
