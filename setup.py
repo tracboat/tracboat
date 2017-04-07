@@ -29,7 +29,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name="tracboat",
-    version='0.0.1',
+    version='0.2.0-alpha',
     description="Trac to GitLab migration utils",
     long_description=long_description,
     author="Federico Ficarelli",
