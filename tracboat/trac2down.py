@@ -12,6 +12,8 @@ import re
 import os
 import codecs
 
+import six
+
 
 def convert(text, base_path, multilines=True):
     text = re.sub('\r\n', '\n', text)
@@ -76,7 +78,7 @@ def save_file(text, name, version, date, author, directory):
     # print >>fp, '<!-- Version: %d -->' % version
     # print >>fp, '<!-- Last-Modified: %s -->' % date
     # print >>fp, '<!-- Author: %s -->' % author
-    fp.write(unicode(text))
+    fp.write(six.u(text))
     fp.close()
 
 '''

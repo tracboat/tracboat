@@ -13,6 +13,8 @@ import shutil
 import importlib
 from datetime import datetime
 
+import six
+
 
 __all__ = ['Connection']
 
@@ -27,7 +29,7 @@ class Connection(object):
         self.model.database_proxy.initialize(db_connector)
         # peewee.PostgresqlDatabase(db_name, user=db_user, password=db_password, host=db_path)
         self.uploads_path = uploads_path
-        self.project_name = project_name
+        self.project_name = project
 
     def clear_issues(self, project_id):
         M = self.model
@@ -62,6 +64,7 @@ class Connection(object):
         return None
 
     def project_by_name(self, project_name):
+        M = self.model
         (namespace, name) = project_name.split('/')
         print(name)
         for project in M.Projects.select().join(M.Namespaces, on=(M.Projects.namespace == M.Namespaces.id )).where((M.Projects.path == name) & (M.Namespaces.path == namespace)):
@@ -178,7 +181,7 @@ class Connection(object):
         if not os.path.exists(directory):
             os.makedirs(directory)
         f = open(full_path, "wb")
-        f.write(binary)
+        f.write(six.b(binary))
         f.close()
 
 

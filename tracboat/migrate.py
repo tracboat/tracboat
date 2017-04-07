@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import logging
-from collections import defaultdict
 
 import six
 
 from tracboat import trac2down
-from tracboat.gitlab import gitlab_model
-from tracboat.gitlab import gitlab_direct
+from tracboat.gitlab import model
+from tracboat.gitlab import direct
 
 __all__ = ['migrate']
 
@@ -213,8 +213,7 @@ def migrate_wiki(trac_wiki, gitlab, output_dir):
             title = 'home'
         converted_page = trac2down.convert(page, os.path.dirname('/wikis/%s' % title))
         orphaned = []
-        for filename, attachment in six.iteritems(attachments):
-            data = attachment['data']
+        for filename, data in six.iteritems(attachments):
             name = filename.split('/')[-1]
             gitlab.save_wiki_attachment(name, data)
             converted_page = \
@@ -238,9 +237,9 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
             output_wiki_path, output_uploads_path, gitlab_fallback_user, usermap=None):
     LOG.info('migrating project %s to GitLab ver. %s', gitlab_version, gitlab_project_name)
     LOG.info('uploads repository path is: %s', output_uploads_path)
-    db_model = gitlab_model.get_model(gitlab_version)
+    db_model = model.get_model(gitlab_version)
     LOG.info('retrieved database model for GitLab ver. %s: %s', gitlab_version, db_model.__file__)
-    gitlab = gitlab_direct.Connection(gitlab_project_name, output_uploads_path, db_model, db_connector)
+    gitlab = direct.Connection(gitlab_project_name, output_uploads_path, db_model, gitlab_db_connector)
     LOG.info('estabilished connection to GitLab database')
     # 1. Wiki
     LOG.info('migrating %d wiki pages to: %s', len(trac['wiki']), output_wiki_path)

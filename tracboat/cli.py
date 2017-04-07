@@ -3,7 +3,6 @@
 import ast
 import pickle
 import functools
-import urlparse
 import logging
 from os import path
 from pprint import pformat
@@ -16,6 +15,7 @@ import json
 import peewee
 from bson import json_util
 
+from . import migrate as migrate_trac
 from . import trac
 from . import VERSION
 
@@ -376,7 +376,7 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
     LOG.debug('GitLab db name: %s', gitlab_db_name)
     LOG.debug('GitLab uploads: %s', gitlab_uploads_path)
     LOG.debug('GitLab fallback user: %s', fallback_user)
-    migrate.migrate(
+    migrate_trac.migrate(
         trac=project,
         gitlab_project_name=gitlab_project_name,
         gitlab_version=gitlab_version,
