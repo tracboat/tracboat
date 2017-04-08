@@ -73,13 +73,13 @@ def save_file(text, name, version, date, author, directory):
     folders = name.rsplit("/", 1)
     if not os.path.exists("%s%s" % (directory, folders[0])):
         os.makedirs("%s%s" % (directory, folders[0]))
-    fp = codecs.open('%s%s.md' % (directory, name), 'w', encoding='utf-8')
-    # print >>fp, '<!-- Name: %s -->' % name
-    # print >>fp, '<!-- Version: %d -->' % version
-    # print >>fp, '<!-- Last-Modified: %s -->' % date
-    # print >>fp, '<!-- Author: %s -->' % author
-    fp.write(six.u(text))
-    fp.close()
+    with codecs.open('%s%s.md' % (directory, name), 'w', encoding='utf-8') as fp:
+        # print >>fp, '<!-- Name: %s -->' % name
+        # print >>fp, '<!-- Version: %d -->' % version
+        # print >>fp, '<!-- Last-Modified: %s -->' % date
+        # print >>fp, '<!-- Author: %s -->' % author
+        fp.write(text)
+        fp.close()
 
 '''
 This file is part of <https://gitlab.dyomedea.com/vdv/trac-to-gitlab>.
