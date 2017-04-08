@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import os
 import ast
+import errno
 import pickle
 import functools
 import logging
@@ -67,6 +69,16 @@ def _loads(content, format=None):
         return pickle.loads(content)
     else:
         return content
+
+
+def _mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
 
 def sanitize_url(url):
@@ -215,7 +227,7 @@ def cli(ctx, config_file, verbose):
 )
 @click.pass_context
 def users(ctx, trac_uri, ssl_verify, from_export_file):
-    '''collect users from a Trac instance'''
+    """collect users from a Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
     #
     if from_export_file:
@@ -253,7 +265,7 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
 )
 @click.pass_context
 def export(ctx, trac_uri, ssl_verify, format, out_file):
-    '''export a complete Trac instance'''
+    """export a complete Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
     #
     LOG.info('crawling Trac instance: %s', sanitize_url(trac_uri))
@@ -331,7 +343,7 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
             gitlab_project_name, gitlab_db_user, gitlab_db_password, gitlab_db_name,
             gitlab_db_path, gitlab_uploads_path, gitlab_version, wiki_path,
             from_export_file, mock, mock_path):
-    '''migrate a Trac instance'''
+    """migrate a Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
     # 0. Build usermap
     umap = {}
@@ -358,9 +370,14 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
     if mock:
         LOG.info('migrating Trac project to mock GitLab')
         mock_path = path.abspath(path.join(mock_path, gitlab_project_name))
-        db_connector = peewee.SqliteDatabase(path.join(mock_path, 'gitlab', 'database.sqlite3'))
+        db_path = path.join(mock_path, 'gitlab', 'database.sqlite3')
         gitlab_uploads_path = path.join(mock_path, 'gitlab', 'uploads')
         wiki_path = path.join(mock_path, 'wiki')
+        _mkdir_p(mock_path)
+        _mkdir_p(db_path)
+        _mkdir_p(gitlab_uploads_path)
+        _mkdir_p(wiki_path)
+        db_connector = peewee.SqliteDatabase(path.join(db_path, 'database.sqlite3'))
     else:
         LOG.info('migrating Trac project to GitLab')
         db_connector = \
