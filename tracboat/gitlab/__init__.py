@@ -11,7 +11,7 @@ __all__ = ['ConnectionBase']
 @six.add_metaclass(abc.ABCMeta)
 class ConnectionBase(object):
 
-    def __init__(project_name):
+    def __init__(self, project_name):
         prj = project_name.strip()
         if not prj:
             raise ValueError('invalid project name: {!r}'.format(project_name))
