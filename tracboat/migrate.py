@@ -67,7 +67,7 @@ def _wikiconvert(text, basepath, multiline=True):
 def ticket_priority(ticket, priority_to_label=TICKET_PRIORITY_TO_ISSUE_LABEL):
     priority = ticket['attributes']['priority']
     if priority in priority_to_label:
-        return set([priority_to_label[priority]])
+        return {priority_to_label[priority]}
     else:
         return set()
 
@@ -75,7 +75,7 @@ def ticket_priority(ticket, priority_to_label=TICKET_PRIORITY_TO_ISSUE_LABEL):
 def ticket_resolution(ticket, resolution_to_label=TICKET_RESOLUTION_TO_ISSUE_LABEL):
     resolution = ticket['attributes']['resolution']
     if resolution in resolution_to_label:
-        return set([resolution_to_label[resolution]])
+        return {resolution_to_label[resolution]}
     else:
         return set()
 
@@ -83,19 +83,19 @@ def ticket_resolution(ticket, resolution_to_label=TICKET_RESOLUTION_TO_ISSUE_LAB
 def ticket_version(ticket):
     version = ticket['attributes']['version']
     if version:
-        return set(['ver:{}'.format(version)])
+        return {'ver:{}'.format(version)}
     else:
         return set()
 
 
 def ticket_components(ticket):
     components = ticket['attributes']['component'].split(',')
-    return set('comp:{}'.format(comp.strip()) for comp in components)
+    return {'comp:{}'.format(comp.strip()) for comp in components}
 
 
 def ticket_type(ticket):
     type = ticket['attributes']['type']
-    return set(['type:{}'.format(type.strip())])
+    return {'type:{}'.format(type.strip())}
 
 
 def ticket_state(ticket, issue, state_to_state=TICKET_STATE_TO_ISSUE_STATE):
@@ -103,7 +103,7 @@ def ticket_state(ticket, issue, state_to_state=TICKET_STATE_TO_ISSUE_STATE):
     if state in state_to_state:
         return state_to_state[state], None
     else:
-        return None, set(['state:{}'.format(state)])
+        return None, {'state:{}'.format(state)}
 
 ################################################################################
 # Trac dict -> GitLab dict conversion

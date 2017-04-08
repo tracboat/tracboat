@@ -15,7 +15,7 @@ import json
 import peewee
 from bson import json_util
 
-from . import migrate as migrate_trac
+from . import migrate as trac_migrate
 from . import trac
 from . import VERSION
 
@@ -68,14 +68,11 @@ def _loads(content, format=None):
     else:
         return content
 
+
 def sanitize_url(url):
     """Strip out username and password if included in URL"""
-    username = None
-    password = None
     if '@' in url:
         parts = urllib.urlparse(url)
-        username = parts.username
-        password = parts.password
         hostname = parts.hostname
         if parts.port:
             hostname += ":%s" % parts.port
@@ -162,6 +159,7 @@ def GITLAB_OPTIONS(func):
         return func(*args, **kwargs)
     return wrapper
 
+
 ################################################################################
 # main command group
 ################################################################################
@@ -199,6 +197,7 @@ def cli(ctx, config_file, verbose):
     # Pass configuration to subcommands
     ctx.obj['verbose'] = verbose
     ctx.obj['config-file'] = config_file
+
 
 ################################################################################
 # subcommands
@@ -376,7 +375,7 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
     LOG.debug('GitLab db name: %s', gitlab_db_name)
     LOG.debug('GitLab uploads: %s', gitlab_uploads_path)
     LOG.debug('GitLab fallback user: %s', fallback_user)
-    migrate_trac.migrate(
+    trac_migrate.migrate(
         trac=project,
         gitlab_project_name=gitlab_project_name,
         gitlab_version=gitlab_version,
