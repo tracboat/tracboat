@@ -39,18 +39,45 @@ NAMESPACE_DEFAULTS = {
 }
 
 
+# TODO
+USER_DEFAULTS = {
+    'admin': False,
+    'can_create_group': True,
+    'can_create_team': True,
+    'color_scheme': 0,
+    # 'username'
+    # 'email' = '',
+    # 'encrypted_password' = CharField()
+    'ldap_email': False,
+    'linkedin': '',
+    'otp_required_for_login': False,
+    # 'public_email': ''
+    'skype': '',
+    'twitter': '',
+    'website_url': '',
+}
+
 class Connection(ConnectionBase):
     def __init__(self, project_name, db_model, db_connector, uploads_path,
                  create_missing=False): # TODO add project and namespace creation kwargs
         self.model = db_model
         self.model.database_proxy.initialize(db_connector)
         self.uploads_path = uploads_path
+        # Ensure all needed tables are present
+        self.model.Projects.create_table(fail_silently=True)
+        self.model.Namespaces.create_table(fail_silently=True)
+        self.model.Milestones.create_table(fail_silently=True)
+        self.model.Events.create_table(fail_silently=True)
+        self.model.Labels.create_table(fail_silently=True)
+        self.model.Users.create_table(fail_silently=True)
+        self.model.Issues.create_table(fail_silently=True)
+        self.model.LabelLinks.create_table(fail_silently=True)
+        # If requested, ensure namespace and project are present
         p_namespace, p_name = split_project_components(project_name)
         if create_missing and not self._get_project(p_namespace, p_name):
             LOG.debug("project %r doesn't exist, creating...", project_name)
             # TODO check for existing namespace
             if p_namespace:
-                self.model.Namespaces.create_table()
                 db_namespace = self.model.Namespaces.create(name=p_namespace,
                     path=p_namespace, **NAMESPACE_DEFAULTS)
                 db_namespace.save()
@@ -58,7 +85,6 @@ class Connection(ConnectionBase):
                 LOG.debug("namespace %r created", p_namespace)
             else:
                 namespace_id = None
-            self.model.Projects.create_table()
             db_project = self.model.Projects.create(name=p_name,
                 namespace=namespace_id, **PROJECT_DEFAULTS)
             db_project.save()
@@ -77,12 +103,12 @@ class Connection(ConnectionBase):
             if p_namespace:
                 project = M.Projects.select() \
                     .join(M.Namespaces, on=(M.Projects.namespace == M.Namespaces.id)) \
-                    .where((M.Projects.path == p_name) &
+                    .where((M.Projects.path == p_name) &  # TODO why path is used as an identifier? Investigate!
                            (M.Namespaces.path == p_namespace)).get()
             else:
                 project = M.Projects.select().where(M.Projects.name == p_name).get()
             return project._data
-        except peewee.OperationalError:
+        except M.Projects.DoesNotExist:
             return None
 
     def clear_issues(self):
@@ -122,7 +148,7 @@ class Connection(ConnectionBase):
                 (M.Milestones.title == milestone_name) &
                 (M.Milestones.project == self.project_id)).get()
             return milestone._data if milestone else None
-        except peewee.OperationalError:
+        except M.Milestones.DoesNotExist:
             return None
 
     def get_project(self):
@@ -132,15 +158,32 @@ class Connection(ConnectionBase):
         milestone = self.get_milestone(milestone_name)
         return milestone["id"] if milestone else None
 
-    def get_user_id(self, username):
+    def get_user_id(self, email=None, username=None):
         M = self.model
-        return M.Users.get(M.Users.username == username).id
+        if email:
+            return M.Users.get(M.Users.email == email).id
+        elif username:
+            return M.Users.get(M.Users.username == username).id
 
     def get_issues_iid(self):
         M = self.model
         return M.Issues.select().where(
             M.Issues.project == self.project_id).aggregate(
                 peewee.fn.Count(M.Issues.id)) + 1
+
+    def create_user(self, email, **kwargs):
+        M = self.model
+        try:
+            user = M.Users.get(M.Users.email == email)
+        except M.Users.DoesNotExist:
+            parms = dict(USER_DEFAULTS)
+            parms.update(kwargs)
+            parms['email'] = email
+            parms.setdefault('public_email', email)
+            user = M.Users.create(**parms)
+            user.save()
+            LOG.debug("user %r created", email)
+        return user.id
 
     def create_milestone(self, new_milestone):
         M = self.model

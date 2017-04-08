@@ -2,6 +2,8 @@
 
 import os
 import re
+import random
+import string
 import logging
 
 import six
@@ -98,10 +100,10 @@ def ticket_type(ticket):
     return {'type:{}'.format(type.strip())}
 
 
-def ticket_state(ticket, issue, state_to_state=TICKET_STATE_TO_ISSUE_STATE):
-    state = ticket['attributes']['state']
-    if state in state_to_state:
-        return state_to_state[state], None
+def ticket_state(ticket, status_to_state=TICKET_STATE_TO_ISSUE_STATE):
+    state = ticket['attributes']['status']
+    if state in status_to_state:
+        return status_to_state[state], None
     else:
         return None, {'state:{}'.format(state)}
 
@@ -172,21 +174,21 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         issue_args = ticket_kwargs(ticket)
         # Fix references
         issue_args['project'] = gitlab.project_id
-        issue_args['milestone'] = gitlab.milestone_id_by_name(issue_args['milestone'])
-        issue_args['author'] = gitlab.get_user_id(usermap.get(issue_args['author'], default_user))
-        issue_args['assignee'] = gitlab.get_user_id(usermap.get(issue_args['assignee'], default_user))
+        issue_args['milestone'] = gitlab.get_milestone_id(issue_args['milestone'])
+        issue_args['author'] = gitlab.get_user_id(username=usermap.get(issue_args['author'], default_user))
+        issue_args['assignee'] = gitlab.get_user_id(username=usermap.get(issue_args['assignee'], default_user))
         # Create and save
         gitlab_issue = gitlab.model.Issues(**issue_args)
-        db_issue = gitlab.create_issue(issue_args['project'], gitlab_issue)
+        db_issue = gitlab.create_issue(gitlab_issue)
         LOG.debug('migrated ticket %s -> %s', ticket_id, db_issue.iid)
         # Migrate whole changelog
         for change in ticket['changelog']:
-            if change['type'] == 'comment':
+            if change['field'] == 'comment':
                 note_args = change_kwargs(change)
                 # Fix references
                 note_args['project'] = issue_args['project']
-                note_args['author'] = gitlab.get_user_id(usermap.get(note_args['author'], default_user))
-                note_args['updated_by'] = gitlab.get_user_id(usermap.get(note_args['updated_by'], default_user))
+                note_args['author'] = gitlab.get_user_id(username=usermap.get(note_args['author'], default_user))
+                note_args['updated_by'] = gitlab.get_user_id(username=usermap.get(note_args['updated_by'], default_user))
                 db_note = gitlab.model.Notes(**note_args)
                 gitlab.comment_issue(db_issue, db_note, binary_attachment)
                 LOG.debug('migrated ticket #%s change -> %s', ticket_id, db_note.iid)
@@ -233,6 +235,11 @@ def migrate_wiki(trac_wiki, gitlab, output_dir):
         LOG.debug('migrated wiki page %s', title)
 
 
+def generate_password(length=None):
+    alphabet = string.letters + string.digits + string.punctuation
+    return ''.join(random.choice(alphabet) for _ in range(length or 30))
+
+
 def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
             output_wiki_path, output_uploads_path, gitlab_fallback_user, usermap=None):
     LOG.info('migrating project %s to GitLab ver. %s', gitlab_project_name, gitlab_version)
@@ -241,6 +248,10 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     LOG.info('retrieved database model for GitLab ver. %s: %s', gitlab_version, db_model.__file__)
     gitlab = direct.Connection(gitlab_project_name, db_model, gitlab_db_connector, output_uploads_path, create_missing=True)
     LOG.info('estabilished connection to GitLab database')
+    # 0. Fallback user
+    # TODO allow to specify email
+    gitlab.create_user(email=gitlab_fallback_user+'@gmail.com', username=gitlab_fallback_user, encrypted_password=generate_password())
+    LOG.info('created fallback GitLab user %r', gitlab_fallback_user)
     # 1. Wiki
     LOG.info('migrating %d wiki pages to: %s', len(trac['wiki']), output_wiki_path)
     migrate_wiki(trac['wiki'], gitlab, output_wiki_path)
