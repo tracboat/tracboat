@@ -2,28 +2,88 @@
 
 import os
 import shutil
+import logging
 from datetime import datetime
 
 import six
 import peewee
 
-from . import ConnectionBase
+from . import ConnectionBase, split_project_components
 
 __all__ = ['Connection']
 
 
+LOG = logging.getLogger(__name__)
+
+
+# TODO infer correct defaults for non-null fields from an actual gitlab database
+PROJECT_DEFAULTS = {
+    'archived': False,
+    'build_allow_git_fetch': True,
+    'build_timeout': 0,
+    'only_allow_merge_if_pipeline_succeeds': False,
+    'public_builds': False,
+    'repository_storage': 'TODO',
+    'request_access_enabled': True,
+    'shared_runners_enabled': True,
+    'star_count': 0,
+    'visibility_level': 0,
+
+}
+
+# TODO infer correct defaults for non-null fields from an actual gitlab database
+NAMESPACE_DEFAULTS = {
+    'description': 'imported',
+    'request_access_enabled': True,
+    'visibility_level': 0,
+}
+
+
 class Connection(ConnectionBase):
-    def __init__(self, project_name, db_model, db_connector, uploads_path):
+    def __init__(self, project_name, db_model, db_connector, uploads_path,
+                 create_missing=False): # TODO add project and namespace creation kwargs
         self.model = db_model
         self.model.database_proxy.initialize(db_connector)
         self.uploads_path = uploads_path
+        p_namespace, p_name = split_project_components(project_name)
+        if create_missing and not self._get_project(p_namespace, p_name):
+            LOG.debug("project %r doesn't exist, creating...", project_name)
+            # TODO check for existing namespace
+            if p_namespace:
+                self.model.Namespaces.create_table()
+                db_namespace = self.model.Namespaces.create(name=p_namespace,
+                    path=p_namespace, **NAMESPACE_DEFAULTS)
+                db_namespace.save()
+                namespace_id = db_namespace.id
+                LOG.debug("namespace %r created", p_namespace)
+            else:
+                namespace_id = None
+            self.model.Projects.create_table()
+            db_project = self.model.Projects.create(name=p_name,
+                namespace=namespace_id, **PROJECT_DEFAULTS)
+            db_project.save()
+            LOG.debug("project %r created in namespace %r", p_name, p_namespace)
         super(Connection, self).__init__(project_name)
 
     def _get_project_id(self, project_name):
-        project = self.project_by_name(project_name)
+        project = self._get_project(project_name)
         if not project:
             raise ValueError("Project {!r} not found".format(project_name))
         return project["id"]
+
+    def _get_project(self, p_name, p_namespace=None):
+        M = self.model
+        try:
+            if p_namespace:
+                project = M.Projects.select() \
+                    .join(M.Namespaces, on=(M.Projects.namespace == M.Namespaces.id)) \
+                    .where((M.Projects.path == p_name) &
+                           (M.Namespaces.path == p_namespace)).get()
+            else:
+                project = M.Projects.select().where(M.Projects.name == p_name).get()
+            return project._data
+        except peewee.OperationalError:
+            return None
 
     def clear_issues(self):
         M = self.model
@@ -57,18 +117,16 @@ class Connection(ConnectionBase):
 
     def get_milestone(self, milestone_name):
         M = self.model
-        milestone = M.Milestones.select().where(
-            (M.Milestones.title == milestone_name) &
-            (M.Milestones.project == self.project_id)).get()
-        return milestone._data if milestone else None
+        try:
+            milestone = M.Milestones.select().where(
+                (M.Milestones.title == milestone_name) &
+                (M.Milestones.project == self.project_id)).get()
+            return milestone._data if milestone else None
+        except peewee.OperationalError:
+            return None
 
     def get_project(self):
-        M = self.model
-        namespace, name = self.project_name.split('/')  # TODO provide namespace and name at baseclass level
-        project = M.Projects.select() \
-            .join(M.Namespaces, on=(M.Projects.namespace == M.Namespaces.id)) \
-            .where((M.Projects.path == name) & (M.Namespaces.path == namespace)).get()
-        return project._data if project else None
+        return self._get_project(self.project_name)
 
     def get_milestone_id(self, milestone_name):
         milestone = self.get_milestone(milestone_name)

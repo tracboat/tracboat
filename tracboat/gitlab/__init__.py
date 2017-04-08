@@ -5,21 +5,38 @@ import abc
 import six
 
 
-__all__ = ['ConnectionBase']
+__all__ = ['ConnectionBase', 'split_project_components']
+
+
+def split_project_components(project_name):
+    if '/' in project_name:
+        return project_name.split('/')
+    else:
+        return None, project_name
 
 
 @six.add_metaclass(abc.ABCMeta)
 class ConnectionBase(object):
 
     def __init__(self, project_name):
-        prj = project_name.strip()
-        if not prj:
+        project = project_name.strip()
+        if not project:
             raise ValueError('invalid project name: {!r}'.format(project_name))
-        self._project_name = prj
+        namespace, project = split_project_components(project)
+        self._project_name = project
+        self._project_namespace = namespace
 
     @property
     def project_name(self):
-        return self.project_name
+        return self._project_name
+
+    @property
+    def project_namespace(self):
+        return self._project_namespace
+
+    @property
+    def project_qualname(self):
+        return self.project_namespace + '/' + self.project_name
 
     @property
     def project_id(self):

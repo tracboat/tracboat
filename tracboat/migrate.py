@@ -171,7 +171,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
     for ticket_id, ticket in six.iteritems(trac_tickets):
         issue_args = ticket_kwargs(ticket)
         # Fix references
-        issue_args['project'] = gitlab.project_id()
+        issue_args['project'] = gitlab.project_id
         issue_args['milestone'] = gitlab.milestone_id_by_name(issue_args['milestone'])
         issue_args['author'] = gitlab.get_user_id(usermap.get(issue_args['author'], default_user))
         issue_args['assignee'] = gitlab.get_user_id(usermap.get(issue_args['assignee'], default_user))
@@ -188,17 +188,17 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 note_args['author'] = gitlab.get_user_id(usermap.get(note_args['author'], default_user))
                 note_args['updated_by'] = gitlab.get_user_id(usermap.get(note_args['updated_by'], default_user))
                 db_note = gitlab.model.Notes(**note_args)
-                gitlab.comment_issue(gitlab.project_id(), db_issue, db_note, binary_attachment)
+                gitlab.comment_issue(db_issue, db_note, binary_attachment)
                 LOG.debug('migrated ticket #%s change -> %s', ticket_id, db_note.iid)
 
 
 def migrate_milestones(trac_milestones, gitlab):
     for title, milestone in six.iteritems(trac_milestones):
         gitlab_milestone = gitlab.model.Milestones(
-            project=gitlab.project_id(),
+            project=gitlab.project_id,
             **milestone_kwargs(milestone)
         )
-        db_milestone = gitlab.create_milestone(dest_project_id, new_milestone)
+        db_milestone = gitlab.create_milestone(gitlab_milestone)
         LOG.debug('migrated milestone %s -> %s', title, db_milestone.iid)
 
 
@@ -235,11 +235,11 @@ def migrate_wiki(trac_wiki, gitlab, output_dir):
 
 def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
             output_wiki_path, output_uploads_path, gitlab_fallback_user, usermap=None):
-    LOG.info('migrating project %s to GitLab ver. %s', gitlab_version, gitlab_project_name)
+    LOG.info('migrating project %s to GitLab ver. %s', gitlab_project_name, gitlab_version)
     LOG.info('uploads repository path is: %s', output_uploads_path)
     db_model = model.get_model(gitlab_version)
     LOG.info('retrieved database model for GitLab ver. %s: %s', gitlab_version, db_model.__file__)
-    gitlab = direct.Connection(gitlab_project_name, output_uploads_path, db_model, gitlab_db_connector)
+    gitlab = direct.Connection(gitlab_project_name, db_model, gitlab_db_connector, output_uploads_path, create_missing=True)
     LOG.info('estabilished connection to GitLab database')
     # 1. Wiki
     LOG.info('migrating %d wiki pages to: %s', len(trac['wiki']), output_wiki_path)
