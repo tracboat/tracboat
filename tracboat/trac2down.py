@@ -68,18 +68,26 @@ def convert(text, base_path, multilines=True):
     text = '\n'.join(a)
     return text
 
-
-def save_file(text, name, version, date, author, directory):
-    folders = name.rsplit("/", 1)
-    if not os.path.exists("%s%s" % (directory, folders[0])):
-        os.makedirs("%s%s" % (directory, folders[0]))
-    with codecs.open('%s%s.md' % (directory, name), 'w', encoding='utf-8') as fp:
+def save_file(text, name, version, date, author, path):
+    # We need to create a directory structure matching the hierarchical
+    # page title, e.g.:
+    # name == 'Chapter1/Main'
+    # the output file will be:
+    # Chapter1/Main.md
+    components = name.split("/")
+    name = components[-1]
+    levels = components[:-1]
+    if levels:
+        path = os.path.join(path, *levels)
+        if not os.path.exists(path):
+            os.makedirs(path)
+    filename = os.path.join(path, name + '.md')
+    with codecs.open(filename, 'w', encoding='utf-8') as fp:
         # print >>fp, '<!-- Name: %s -->' % name
         # print >>fp, '<!-- Version: %d -->' % version
         # print >>fp, '<!-- Last-Modified: %s -->' % date
         # print >>fp, '<!-- Author: %s -->' % author
         fp.write(text)
-        fp.close()
 
 '''
 This file is part of <https://gitlab.dyomedea.com/vdv/trac-to-gitlab>.
