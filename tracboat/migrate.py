@@ -242,10 +242,10 @@ def generate_password(length=None):
 
 def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
             output_wiki_path, output_uploads_path, gitlab_fallback_user, usermap=None):
-    LOG.info('migrating project %s to GitLab ver. %s', gitlab_project_name, gitlab_version)
-    LOG.info('uploads repository path is: %s', output_uploads_path)
+    LOG.info('migrating project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)
+    LOG.info('uploads repository path is: %r', output_uploads_path)
     db_model = model.get_model(gitlab_version)
-    LOG.info('retrieved database model for GitLab ver. %s: %s', gitlab_version, db_model.__file__)
+    LOG.info('retrieved database model for GitLab ver. %s: %r', gitlab_version, db_model.__file__)
     gitlab = direct.Connection(gitlab_project_name, db_model, gitlab_db_connector, output_uploads_path, create_missing=True)
     LOG.info('estabilished connection to GitLab database')
     # 0. Fallback user
@@ -262,4 +262,4 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     LOG.info('migrating %d tickets to issues', len(trac['tickets']))
     migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap)
     # Farewell
-    LOG.info('done migration of project %s to GitLab ver. %s', gitlab_version, gitlab_project_name)
+    LOG.info('done migration of project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)
