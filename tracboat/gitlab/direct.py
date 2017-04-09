@@ -39,7 +39,7 @@ NAMESPACE_DEFAULTS = {
 }
 
 
-# TODO
+# TODO infer correct defaults for non-null fields from an actual gitlab database
 USER_DEFAULTS = {
     'admin': False,
     'can_create_group': True,
@@ -57,6 +57,12 @@ USER_DEFAULTS = {
     'website_url': '',
 }
 
+
+# TODO infer correct defaults for non-null fields from an actual gitlab database
+NOTE_DEFAULTS = {
+    'system': False,
+}
+
 class Connection(ConnectionBase):
     def __init__(self, project_name, db_model, db_connector, uploads_path,
                  create_missing=False): # TODO add project and namespace creation kwargs
@@ -72,6 +78,7 @@ class Connection(ConnectionBase):
         self.model.Users.create_table(fail_silently=True)
         self.model.Issues.create_table(fail_silently=True)
         self.model.LabelLinks.create_table(fail_silently=True)
+        self.model.Notes.create_table(fail_silently=True)
         # If requested, ensure namespace and project are present
         p_namespace, p_name = split_project_components(project_name)
         if create_missing and not self._get_project(p_namespace, p_name):
@@ -241,22 +248,24 @@ class Connection(ConnectionBase):
             label_link.save()
         return new_issue
 
-    def comment_issue(self, ticket, note, binary_attachment):
+    def comment_issue(self, ticket, note, binary_attachment=None):
         M = self.model
         note.project = self.project_id
         note.noteable = ticket.id
         note.noteable_type = 'Issue'
+        # Fix non-null fields
+        # TODO this stuff must be refactored
+        # entities must be handled here and not outside by the user
+        for k, v in six.iteritems(NOTE_DEFAULTS):
+            setattr(note, k, v)
         note.save()
-
         if binary_attachment:
             directory = os.path.join(self.uploads_path, 'note/attachment/%s' % note.id)
             if not os.path.exists(directory):
                 os.makedirs(directory)
             path = os.path.join(directory, note.attachment)
-            f = open(path, "wb")
-            f.write(binary_attachment)
-            f.close()
-
+            with open(path, "wb") as f:
+                f.write(binary_attachment)
         event = M.Events.create(
             action=1,
             author=note.author,
@@ -275,6 +284,5 @@ class Connection(ConnectionBase):
         directory = os.path.dirname(full_path)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        f = open(full_path, "wb")
-        f.write(six.b(binary))
-        f.close()
+        with open(full_path, "wb") as f:
+            f.write(binary)

@@ -103,7 +103,7 @@ def ticket_type(ticket):
 def ticket_state(ticket, status_to_state=TICKET_STATE_TO_ISSUE_STATE):
     state = ticket['attributes']['status']
     if state in status_to_state:
-        return status_to_state[state], None
+        return status_to_state[state], set()
     else:
         return None, {'state:{}'.format(state)}
 
@@ -190,8 +190,8 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 note_args['author'] = gitlab.get_user_id(username=usermap.get(note_args['author'], default_user))
                 note_args['updated_by'] = gitlab.get_user_id(username=usermap.get(note_args['updated_by'], default_user))
                 db_note = gitlab.model.Notes(**note_args)
-                gitlab.comment_issue(db_issue, db_note, binary_attachment)
-                LOG.debug('migrated ticket #%s change -> %s', ticket_id, db_note.iid)
+                gitlab.comment_issue(db_issue, db_note, binary_attachment=None) # TODO changelog binary attachments!
+                LOG.debug('migrated ticket #%s change -> %s', ticket_id, db_note.id)
 
 
 def migrate_milestones(trac_milestones, gitlab):
