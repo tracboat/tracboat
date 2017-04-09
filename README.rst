@@ -127,12 +127,14 @@ inherited its `GPLv3 <https://www.gnu.org/licenses/gpl-3.0.en.html>`_ license.
 Changes
 =======
 
-0.1.0 *(unreleased)*
---------------------
+0.2.0-alpha *(unreleased)*
+--------------------------
 
 Added
 `````
-- Project import.
+- Project import
+- Migration to mock GitLab on file system
+- Creation of missing GitLab users, namespaces and projects
 
 
 .. _trac:
