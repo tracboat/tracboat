@@ -61,6 +61,7 @@ USER_DEFAULTS = {
 # TODO infer correct defaults for non-null fields from an actual gitlab database
 NOTE_DEFAULTS = {
     'system': False,
+    'noteable_type': 'Issue',
 }
 
 
@@ -193,73 +194,107 @@ class Connection(ConnectionBase):
             LOG.debug("user %r created", email)
         return user.id
 
-    def create_milestone(self, new_milestone):
+    def create_milestone(self, **kwargs):
         M = self.model
+        # fix foreign keys
+        kwargs['project'] = self.project_id
+        kwargs['created_at'] = datetime.now()
+        kwargs['updated_at'] = datetime.now()
         try:
-            existing = M.Milestones.get(
-                (M.Milestones.title == new_milestone.title) &
-                (M.Milestones.project == self.project_id))
-            for k in new_milestone._data:
-                if k not in ('id', 'iid'):
-                    existing._data[k] = new_milestone._data[k]
-            new_milestone = existing
-        except:
-            new_milestone.iid = M.Milestones.select().where(
-                M.Milestones.project == self.project_id).aggregate(
-                    peewee.fn.Count(M.Milestones.id)) + 1
-            new_milestone.created_at = datetime.now()
-            new_milestone.updated_at = datetime.now()
-        new_milestone.save()
-        return new_milestone
+            milestone = M.Milestones.get(
+                (M.Milestones.title == kwargs['title']) &
+                (M.Milestones.project == kwargs['project']))
+            # for k in new_milestone._data:
+            #     if k not in ('id', 'iid'):
+            #         existing._data[k] = new_milestone._data[k]
+            # new_milestone = existing
+        except M.Milestones.DoesNotExist:
+            milestone = M.Milestones.create(**kwargs)
+            milestone.save()
+            # new_milestone.iid = M.Milestones.select().where(
+            #     M.Milestones.project == self.project_id).aggregate(
+            #         peewee.fn.Count(M.Milestones.id)) + 1
+        return milestone.id
 
-    def create_issue(self, new_issue):
+    def create_issue(self, **kwargs):
         M = self.model
-        new_issue.save()
+        # 1. Issue
+        # fix foreign keys
+        kwargs['project'] = self.project_id
+        if 'milestone' in kwargs:
+            kwargs['milestone'] = self.get_milestone_id(kwargs['milestone'])
+        if 'author' in kwargs:
+            kwargs['author'] = self.get_user_id(username=kwargs['author'])
+        if 'assignee' in kwargs:
+            kwargs['assignee'] = self.get_user_id(username=kwargs['assignee'])
+        issue = M.Issues.create(**kwargs)
+        issue.save()
+        # 2. Event
         event = M.Events.create(
             action=1,
-            author=new_issue.author,
-            created_at=new_issue.created_at,
-            project=self.project_id,
-            target=new_issue.id,
+            author=issue.author,
+            created_at=issue.created_at,
+            project=issue.project,
+            target=issue.id,
             target_type='Issue',
-            updated_at=new_issue.created_at
+            updated_at=issue.created_at
         )
         event.save()
-        for title in set(new_issue.labels.split(',')):
+        # 3. Labels
+        # TODO move label creation in a separate method
+        for title in issue.labels.split(','):
             try:
                 label = M.Labels.get((M.Labels.title == title) &
                                      (M.Labels.project == self.project_id))
-            except:
+            except M.Labels.DoesNotExist:
                 label = M.Labels.create(
                     title=title,
                     color='#0000FF',
-                    project=self.project_id,
+                    project=issue.project,
                     type='ProjectLabel',
-                    created_at=new_issue.created_at,
-                    update_at=new_issue.created_at
+                    created_at=issue.created_at,
+                    update_at=issue.created_at
                 )
                 label.save()
             label_link = M.LabelLinks.create(
                 label=label.id,
-                target=new_issue.id,
+                target=issue.id,
                 target_type='Issue',
-                created_at=new_issue.created_at,
-                update_at=new_issue.created_at
+                created_at=issue.created_at,
+                update_at=issue.created_at
             )
             label_link.save()
-        return new_issue
+        return issue.id
 
-    def comment_issue(self, ticket, note, binary_attachment=None):
+    def comment_issue(self, issue_id=None, binary_attachment=None, **kwargs):
         M = self.model
-        note.project = self.project_id
-        note.noteable = ticket.id
-        note.noteable_type = 'Issue'
-        # Fix non-null fields
-        # TODO this stuff must be refactored
-        # entities must be handled here and not outside by the user
-        for k, v in six.iteritems(NOTE_DEFAULTS):
-            setattr(note, k, v)
+        # 1. Note
+        # fix foreign keys
+        kwargs['project'] = self.project_id
+        if issue_id:
+            kwargs['noteable'] = issue_id
+        if 'author' in kwargs:
+            kwargs['author'] = self.get_user_id(username=kwargs['author'])
+        if 'updated_by' in kwargs:
+            kwargs['updated_by'] = self.get_user_id(username=kwargs['updated_by'])
+        # Fix defaults for non-null fields
+        opts = dict(NOTE_DEFAULTS)
+        opts.update(kwargs)
+        # Create
+        note = M.Notes.create(**opts)
         note.save()
+        # 2. Event
+        event = M.Events.create(
+            action=1,
+            author=note.author,
+            created_at=note.created_at,
+            project=note.project,
+            target=note.id,
+            target_type='Note',
+            updated_at=note.created_at
+        )
+        event.save()
+        # 3. Handle binary attachment if present
         if binary_attachment:
             directory = os.path.join(self.uploads_path, 'note/attachment/%s' % note.id)
             if not os.path.exists(directory):
@@ -267,16 +302,7 @@ class Connection(ConnectionBase):
             path = os.path.join(directory, note.attachment)
             with open(path, "wb") as f:
                 f.write(binary_attachment)
-        event = M.Events.create(
-            action=1,
-            author=note.author,
-            created_at=note.created_at,
-            project=self.project_id,
-            target=note.id,
-            target_type='Note',
-            updated_at=note.created_at
-        )
-        event.save()
+        return note.id
 
     def save_wiki_attachment(self, path, binary):
         filename = os.path.join(self.uploads_path, self.project_qualname, path)

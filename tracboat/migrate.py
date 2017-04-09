@@ -10,7 +10,7 @@ import six
 
 from tracboat import trac2down
 from tracboat.gitlab import model
-from tracboat.gitlab import direct
+from tracboat.gitlab import direct  # TODO selectable mode (api/direct)
 
 __all__ = ['migrate']
 
@@ -172,36 +172,29 @@ def milestone_kwargs(milestone):
 def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
     for ticket_id, ticket in six.iteritems(trac_tickets):
         issue_args = ticket_kwargs(ticket)
-        # Fix references
-        issue_args['project'] = gitlab.project_id
-        issue_args['milestone'] = gitlab.get_milestone_id(issue_args['milestone'])
-        issue_args['author'] = gitlab.get_user_id(username=usermap.get(issue_args['author'], default_user))
-        issue_args['assignee'] = gitlab.get_user_id(username=usermap.get(issue_args['assignee'], default_user))
-        # Create and save
-        gitlab_issue = gitlab.model.Issues(**issue_args)
-        db_issue = gitlab.create_issue(gitlab_issue)
-        LOG.debug('migrated ticket %s -> %s', ticket_id, db_issue.iid)
+        # Fix user mapping
+        issue_args['author'] = usermap.get(issue_args['author'], default_user)
+        issue_args['assignee'] = usermap.get(issue_args['assignee'], default_user)
+        # Create
+        db_issue_id = gitlab.create_issue(**issue_args)
+        LOG.debug('migrated ticket %s -> %s', ticket_id, db_issue_id)
         # Migrate whole changelog
         for change in ticket['changelog']:
             if change['field'] == 'comment':
                 note_args = change_kwargs(change)
-                # Fix references
-                note_args['project'] = issue_args['project']
-                note_args['author'] = gitlab.get_user_id(username=usermap.get(note_args['author'], default_user))
-                note_args['updated_by'] = gitlab.get_user_id(username=usermap.get(note_args['updated_by'], default_user))
-                db_note = gitlab.model.Notes(**note_args)
-                gitlab.comment_issue(db_issue, db_note, binary_attachment=None) # TODO changelog binary attachments!
-                LOG.debug('migrated ticket #%s change -> %s', ticket_id, db_note.id)
+                # Fix user mapping
+                note_args['author'] = usermap.get(note_args['author'], default_user)
+                note_args['updated_by'] = usermap.get(note_args['updated_by'], default_user)
+                db_note_id = gitlab.comment_issue(issue_id=db_issue_id,
+                    binary_attachment=None, **note_args) # TODO changelog binary attachments!
+                LOG.debug('migrated ticket #%s change -> %s', ticket_id, db_note_id)
 
 
 def migrate_milestones(trac_milestones, gitlab):
     for title, milestone in six.iteritems(trac_milestones):
-        gitlab_milestone = gitlab.model.Milestones(
-            project=gitlab.project_id,
-            **milestone_kwargs(milestone)
-        )
-        db_milestone = gitlab.create_milestone(gitlab_milestone)
-        LOG.debug('migrated milestone %s -> %s', title, db_milestone.iid)
+        milestone_args = milestone_kwargs(milestone)
+        db_milestone_id = gitlab.create_milestone(**milestone_args)
+        LOG.debug('migrated milestone %s -> %s', title, db_milestone_id)
 
 
 def migrate_wiki(trac_wiki, gitlab, output_dir):
