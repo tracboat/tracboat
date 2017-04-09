@@ -370,7 +370,7 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
     if mock:
         LOG.info('migrating Trac project to mock GitLab')
         mock_path = path.abspath(path.join(mock_path, gitlab_project_name))
-        db_path = path.join(mock_path, 'gitlab', 'database.sqlite3')
+        db_path = path.join(mock_path, 'gitlab')
         gitlab_uploads_path = path.join(mock_path, 'gitlab', 'uploads')
         wiki_path = path.join(mock_path, 'wiki')
         _mkdir_p(mock_path)
