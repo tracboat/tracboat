@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import os
 import ast
+import errno
 import pickle
 import functools
 import logging
@@ -15,7 +17,7 @@ import json
 import peewee
 from bson import json_util
 
-from . import migrate as migrate_trac
+from . import migrate as trac_migrate
 from . import trac
 from . import VERSION
 
@@ -68,14 +70,21 @@ def _loads(content, format=None):
     else:
         return content
 
+
+def _mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
+
 def sanitize_url(url):
     """Strip out username and password if included in URL"""
-    username = None
-    password = None
     if '@' in url:
         parts = urllib.urlparse(url)
-        username = parts.username
-        password = parts.password
         hostname = parts.hostname
         if parts.port:
             hostname += ":%s" % parts.port
@@ -162,6 +171,7 @@ def GITLAB_OPTIONS(func):
         return func(*args, **kwargs)
     return wrapper
 
+
 ################################################################################
 # main command group
 ################################################################################
@@ -200,6 +210,7 @@ def cli(ctx, config_file, verbose):
     ctx.obj['verbose'] = verbose
     ctx.obj['config-file'] = config_file
 
+
 ################################################################################
 # subcommands
 ################################################################################
@@ -216,7 +227,7 @@ def cli(ctx, config_file, verbose):
 )
 @click.pass_context
 def users(ctx, trac_uri, ssl_verify, from_export_file):
-    '''collect users from a Trac instance'''
+    """collect users from a Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
     #
     if from_export_file:
@@ -254,7 +265,7 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
 )
 @click.pass_context
 def export(ctx, trac_uri, ssl_verify, format, out_file):
-    '''export a complete Trac instance'''
+    """export a complete Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
     #
     LOG.info('crawling Trac instance: %s', sanitize_url(trac_uri))
@@ -332,7 +343,7 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
             gitlab_project_name, gitlab_db_user, gitlab_db_password, gitlab_db_name,
             gitlab_db_path, gitlab_uploads_path, gitlab_version, wiki_path,
             from_export_file, mock, mock_path):
-    '''migrate a Trac instance'''
+    """migrate a Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
     # 0. Build usermap
     umap = {}
@@ -359,9 +370,14 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
     if mock:
         LOG.info('migrating Trac project to mock GitLab')
         mock_path = path.abspath(path.join(mock_path, gitlab_project_name))
-        db_connector = peewee.SqliteDatabase(path.join(mock_path, 'gitlab', 'database.sqlite3'))
+        db_path = path.join(mock_path, 'gitlab', 'database.sqlite3')
         gitlab_uploads_path = path.join(mock_path, 'gitlab', 'uploads')
         wiki_path = path.join(mock_path, 'wiki')
+        _mkdir_p(mock_path)
+        _mkdir_p(db_path)
+        _mkdir_p(gitlab_uploads_path)
+        _mkdir_p(wiki_path)
+        db_connector = peewee.SqliteDatabase(path.join(db_path, 'database.sqlite3'))
     else:
         LOG.info('migrating Trac project to GitLab')
         db_connector = \
@@ -376,7 +392,7 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
     LOG.debug('GitLab db name: %s', gitlab_db_name)
     LOG.debug('GitLab uploads: %s', gitlab_uploads_path)
     LOG.debug('GitLab fallback user: %s', fallback_user)
-    migrate_trac.migrate(
+    trac_migrate.migrate(
         trac=project,
         gitlab_project_name=gitlab_project_name,
         gitlab_version=gitlab_version,

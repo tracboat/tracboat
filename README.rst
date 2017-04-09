@@ -14,6 +14,7 @@ Features
 
 * Export Trac projects along with issues, issue changelogs (with attachments)
   and wiki pages (with attachments)
+* Create GitLab users, projects and namespaces involved in the migration process
 * Export Trac projects to local files (in json, toml, Python literal or Python
   pickle formats)
 * Migrate Trac projects directly from remote instances as well as from previously
