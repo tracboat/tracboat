@@ -176,8 +176,8 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         issue_args['author'] = usermap.get(issue_args['author'], default_user)
         issue_args['assignee'] = usermap.get(issue_args['assignee'], default_user)
         # Create
-        db_issue_id = gitlab.create_issue(**issue_args)
-        LOG.debug('migrated ticket %s -> %s', ticket_id, db_issue_id)
+        gitlab_issue_id = gitlab.create_issue(**issue_args)
+        LOG.debug('migrated ticket %s -> %s', ticket_id, gitlab_issue_id)
         # Migrate whole changelog
         for change in ticket['changelog']:
             if change['field'] == 'comment':
@@ -185,16 +185,16 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 # Fix user mapping
                 note_args['author'] = usermap.get(note_args['author'], default_user)
                 note_args['updated_by'] = usermap.get(note_args['updated_by'], default_user)
-                db_note_id = gitlab.comment_issue(issue_id=db_issue_id,
+                gitlab_note_id = gitlab.comment_issue(issue_id=gitlab_issue_id,
                     binary_attachment=None, **note_args) # TODO changelog binary attachments!
-                LOG.debug('migrated ticket #%s change -> %s', ticket_id, db_note_id)
+                LOG.debug('migrated ticket #%s change -> %s', ticket_id, gitlab_note_id)
 
 
 def migrate_milestones(trac_milestones, gitlab):
     for title, milestone in six.iteritems(trac_milestones):
         milestone_args = milestone_kwargs(milestone)
-        db_milestone_id = gitlab.create_milestone(**milestone_args)
-        LOG.debug('migrated milestone %s -> %s', title, db_milestone_id)
+        gitlab_milestone_id = gitlab.create_milestone(**milestone_args)
+        LOG.debug('migrated milestone %s -> %s', title, gitlab_milestone_id)
 
 
 def migrate_wiki(trac_wiki, gitlab, output_dir):
