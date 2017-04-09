@@ -24,13 +24,6 @@ Features
 
 Installation
 ============
-TracBoat is available on `pypi <https://pypi.python.org/pypi/tracboat>`_,
-so to install it just type:
-
-.. code::
-
-    $ pip install tracboat
-
 If you want to **install from source**, doing it in a ``virtualenv`` is *highly
 recommended*. After having this repo cloned, just type:
 
