@@ -63,6 +63,7 @@ NOTE_DEFAULTS = {
     'system': False,
 }
 
+
 class Connection(ConnectionBase):
     def __init__(self, project_name, db_model, db_connector, uploads_path,
                  create_missing=False): # TODO add project and namespace creation kwargs
@@ -278,11 +279,11 @@ class Connection(ConnectionBase):
         event.save()
 
     def save_wiki_attachment(self, path, binary):
-        full_path = os.path.join(self.uploads_path, self.project_name, 'migrated', path)
-        if os.path.isfile(full_path):
-            raise Exception("file already exists: %s" % full_path)
-        directory = os.path.dirname(full_path)
+        filename = os.path.join(self.uploads_path, self.project_qualname, path)
+        if os.path.isfile(filename):
+            raise Exception("file already exists: %r" % filename)
+        directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        with open(full_path, "wb") as f:
+        with open(filename, "wb") as f:
             f.write(binary)
