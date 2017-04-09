@@ -57,7 +57,7 @@ Dependencies
 Getting started
 ===============
 
-Every command line option can be specified as an evironment variable, so the
+Every command line option can be specified as an environment variable, so the
 following command:
 
 .. code::
