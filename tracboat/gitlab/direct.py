@@ -174,11 +174,11 @@ class Connection(ConnectionBase):
         elif username:
             return M.Users.get(M.Users.username == username).id
 
-    def get_issues_iid(self):
-        M = self.model
-        return M.Issues.select().where(
-            M.Issues.project == self.project_id).aggregate(
-                peewee.fn.Count(M.Issues.id)) + 1
+    # def get_issues_iid(self):
+    #     M = self.model
+    #     return M.Issues.select().where(
+    #         M.Issues.project == self.project_id).aggregate(
+    #             peewee.fn.Count(M.Issues.id)) + 1
 
     def create_user(self, email, **kwargs):
         M = self.model

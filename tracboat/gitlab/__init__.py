@@ -72,20 +72,24 @@ class ConnectionBase(object):
     def get_user_id(self, username):
         raise NotImplementedError()
 
+    # @abc.abstractmethod
+    # def get_issues_iid(self):
+    #     raise NotImplementedError()
+
     @abc.abstractmethod
-    def get_issues_iid(self):
+    def create_milestone(self, **kwargs):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def create_milestone(self, new_milestone):
+    def create_issue(self, **kwargs):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def create_issue(self, new_issue):
+    def create_user(self, email, **kwargs):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def comment_issue(self, ticket, note, binary_attachment):
+    def comment_issue(self, issue_id=None, binary_attachment=None, **kwargs):
         raise NotImplementedError()
 
     @abc.abstractmethod
