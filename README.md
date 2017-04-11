@@ -29,7 +29,7 @@ Installation
 If you want to **install from source**, doing it in a `virtualenv` is
 *highly recommended*. After having this repo cloned, just type:
 
-```
+```shell
 $ cd tracboat
 $ virtualenv -p python2.7 VENV
 $ source VENV/bin/activate
@@ -54,13 +54,13 @@ Getting started
 Every command line option can be specified as an environment variable,
 so the following command:
 
-```
+```shell
 $ tracboat users --trac-uri=https://mytrac/xmlrpc --no-ssl-verify
 ```
 
 ...is exactly the same as the following:
 
-```
+```shell
 $ export TRACBOAT_TRAC_URI=https://mytrac/xmlrpc
 $ export TRACBOAT_SSL_VERIFY=0
 $ tracboat users
@@ -70,7 +70,7 @@ Another way to conveniently configure `tracboat` is with a configuration
 file in [TOML](https://github.com/toml-lang/toml) format. Providing a
 file
 
-```
+```shell
 $ cat mytrac.toml
 [tracboat]
 trac_uri = "https://mytrac/xmlrpc"
@@ -91,19 +91,19 @@ have a look to the [click documentation](http://click.pocoo.org/).
 
 ### Collecting Trac users
 
-```
+```shell
 $ tracboat users --trac-uri=http://localhost/xmlrpc
 ```
 
 ### Export a Trac instance
 
-```
+```shell
 $ tracboat export --trac-uri=http://localhost/xmlrpc --format=json --out-file=myproject.json
 ```
 
 ### Migrate to GitLab
 
-```
+```shell
 $ cat awesomemigration.toml
 [tracboat]
 from-export-file = "myexportedtracproject.json"
@@ -124,7 +124,7 @@ single user. Not so fancy, but definitely handy if you just care about
 content. You can specify a custom fallback username with the proper
 option:
 
-```
+```shell
 $ cat config.toml
 [tracboat]
 fallback_user = "bot@migration.gov"
@@ -133,14 +133,14 @@ fallback_user = "bot@migration.gov"
 As usual, the same behaviour can be obtained via command line option or
 environment variable. So doing this:
 
-```
+```shell
 $ export TRACBOAT_FALLBACK_USER=bot@migration.gov
 $ tracboat migrate
 ```
 
 ...is the same as doing this:
 
-```
+```shell
 $ tracboat migrate --fallback-user=bot@migration.gov
 ```
 
@@ -151,7 +151,7 @@ corresponding account) you need to specify a custom *user mapping*, or
 an association between a Trac username and a GitLab account. You can use
 a key-value section in the configuration file:
 
-```
+```shell
 $ cat config.toml
 [tracboat.usermap]
     tracuser1 = "gitlabuser1@foo.com"
@@ -166,7 +166,7 @@ authored by `gitlabuser1@foo.com`.
 You can add extra mappings using the `--umap` command line option, so
 doing like this:
 
-```
+```shell
 $ tracboat migrate --umap tracuser1 gitlabuser1@foo.com --umap tracuser2 gitlabuser2@foo.com ...
 ```
 
@@ -185,7 +185,7 @@ don't say anything about how an user should be created, Tracboat uses
 some defaults. However you can throw a proper section in the
 configuration file to tweak those user creation attributes:
 
-```
+```shell
 $ cat config.toml
 [tracboat.users.default]
     admin = false
@@ -198,7 +198,7 @@ migration process. However, you can spceify additional `user`
 subsections to precisely control which values would be used for a
 particular account:
 
-```
+```shell
 $ cat config.toml
 [tracboat.users.default]
     admin = false
@@ -224,7 +224,7 @@ This is a fairly complete configuration example with a usermap and
 custom user attributes. You can find additional examples in the
 `examples/` directory.
 
-```
+```toml
 # Tracboat will look for values in the [tracboat] section only, so
 # you can merge in a single file values for other applications.
 
