@@ -1,0 +1,84 @@
+# This is a fairly complete configuration file for a Tracboat migration.
+# Tracboat will look for values in the [tracboat] section only, so
+# you can merge in a single file values for other applications.
+
+[tracboat]
+
+# The Trac instance to be crawled.
+# If you have any secrets in the URL (just like in this case,
+# our password is in plain text), consider using the corresponding
+# environment variable TRACBOAT_TRAC_URI to avoid having secrets in
+# the configuration file.
+trac_uri = "https://myuser:MYPASSWORD@localhost/login/xmlrpc"
+
+# Disable ssl certificate verification (e.g.: needed with self signed certs).
+ssl_verify = false
+
+# The GitLab project name.
+# Can be specified as a path, subdirectories will be treated as GitLab
+# namespaces.
+gitlab_project_name = "migrated/myproject"
+
+# The fallback user, used when a Trac username has no entry in the
+# [tracboat.usermap] section.
+fallback_user = "bot@tracboat.gov"
+
+# Users configuration.
+# Every section beyond this point can be passed in separate TOML files
+# with repeated --umap-file command line options or directly here:
+#
+# umap_file = ['users1.toml', 'users2.toml']
+
+# The Trac -> GitLab user conversion mapping.
+# It is *highly* recommended to use a valid email address for the GitLab part
+# since by default each account will be created with a random password
+# (you need a valid address for the password reset procedure to work properly).
+[tracboat.usermap]
+    tracuser1 = "gitlabuser1@foo.com"
+    tracuser2 = "gitlabuser2@foo.com"
+    tracuser3 = "gitlabuser3@foo.com"
+    tracuser4 = "gitlabuser4@foo.com"
+
+[tracboat.users]
+# GitLab users attributes.
+# This section allows to specify custom attributes
+# to be used during GitLab user creation. Accepted values are
+# listed here:
+# https://docs.gitlab.com/ce/api/users.html#user-creation
+
+[tracboat.users.default]
+    # This 'default' section specifies attributes applied
+    # to all new GitLab users.
+    external = true
+
+[tracboat.users."gitlabuser4@foo.com"]
+    # This section affects a specific user (in this case "gitlabuser4@foo.com").
+    # These key-value entries will be merged with those in the
+    # [tracboat.users.default] section. For repeated values, those specified
+    # here will prevail.
+    #
+    # There are some mandatory values that must be specified
+    # for each user, otherwise the following default values
+    # will be used:
+    #
+    # username = ...
+    #     Defaults to the user part of the GitLab email address
+    #     (e.g. "gitlabuser4" for "gitlabuser4@foo.com").
+    #
+    # encrypted_password = ...
+    #     Defaults to a random password (at the first login the user must carry
+    #     out a password reset procedure). Anyway, you are *highly* discouraged
+    #     to specify secrets here, please stick to the default behaviour.
+    username = "theboss"
+    bio = "Hi. I am the boss here."
+    admin = true
+    twitter = "@theboss"
+    external = false  # this value overrides tracboat.users.default.external
+
+[tracboat.users."bot@tracboat.gov"]
+    # This section affects the fallback user, used when a Trac
+    # username has no entry in the [tracboat.usermap] section.
+    username = "migration-bot"
+    bio = "Hi. I am the robot that migrated all your stuff."
+    admin = true
+    external = false
