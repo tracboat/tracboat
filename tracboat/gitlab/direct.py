@@ -167,12 +167,13 @@ class Connection(ConnectionBase):
         milestone = self.get_milestone(milestone_name)
         return milestone["id"] if milestone else None
 
-    def get_user_id(self, email=None, username=None):
+    def get_user_id(self, email):
         M = self.model
-        if email:
-            return M.Users.get(M.Users.email == email).id
-        elif username:
-            return M.Users.get(M.Users.username == username).id
+        return M.Users.get(M.Users.email == email).id
+        # if email:
+        #     return M.Users.get(M.Users.email == email).id
+        # elif username:
+        #     return M.Users.get(M.Users.username == username).id
 
     # def get_issues_iid(self):
     #     M = self.model
@@ -224,9 +225,9 @@ class Connection(ConnectionBase):
         if 'milestone' in kwargs:
             kwargs['milestone'] = self.get_milestone_id(kwargs['milestone'])
         if 'author' in kwargs:
-            kwargs['author'] = self.get_user_id(username=kwargs['author'])
+            kwargs['author'] = self.get_user_id(kwargs['author'])
         if 'assignee' in kwargs:
-            kwargs['assignee'] = self.get_user_id(username=kwargs['assignee'])
+            kwargs['assignee'] = self.get_user_id(kwargs['assignee'])
         issue = M.Issues.create(**kwargs)
         issue.save()
         # 2. Event
@@ -274,9 +275,9 @@ class Connection(ConnectionBase):
         if issue_id:
             kwargs['noteable'] = issue_id
         if 'author' in kwargs:
-            kwargs['author'] = self.get_user_id(username=kwargs['author'])
+            kwargs['author'] = self.get_user_id(kwargs['author'])
         if 'updated_by' in kwargs:
-            kwargs['updated_by'] = self.get_user_id(username=kwargs['updated_by'])
+            kwargs['updated_by'] = self.get_user_id(kwargs['updated_by'])
         # Fix defaults for non-null fields
         opts = dict(NOTE_DEFAULTS)
         opts.update(kwargs)

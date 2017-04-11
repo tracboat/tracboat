@@ -8,6 +8,7 @@ import functools
 import logging
 from os import path
 from pprint import pformat
+from collections import defaultdict
 from six.moves.urllib import parse as urllib
 
 import six
@@ -81,7 +82,7 @@ def _mkdir_p(path):
             raise
 
 
-def sanitize_url(url):
+def _sanitize_url(url):
     """Strip out username and password if included in URL"""
     if '@' in url:
         parts = urllib.urlparse(url)
@@ -99,7 +100,6 @@ def sanitize_url(url):
 def TRAC_OPTIONS(func):
     @click.option(
         '--trac-uri',
-        metavar='<uri>',
         default='http://localhost/xmlrpc',
         show_default=True,
         help='uri of the Trac instance XMLRpc endpoint',
@@ -119,33 +119,28 @@ def TRAC_OPTIONS(func):
 def GITLAB_OPTIONS(func):
     @click.option(
         '--gitlab-project-name',
-        metavar='<str>',
         default='migrated/trac-project',
         show_default=True,
         help='GitLab destination project name',
     )
     @click.option(
         '--gitlab-db-user',
-        metavar='<str>',
         default='gitlab',
         show_default=True,
         help='GitLab database username',
     )
     @click.option(
         '--gitlab-db-password',
-        metavar='<str>',
         help='GitLab database password',
     )
     @click.option(
         '--gitlab-db-name',
-        metavar='<str>',
         default='gitlabhq_production',
         show_default=True,
         help='GitLab database schema name',
     )
     @click.option(
         '--gitlab-db-path',
-        metavar='<path>',
         type=click.Path(),
         default='/var/opt/gitlab/postgresql/',
         show_default=True,
@@ -153,7 +148,6 @@ def GITLAB_OPTIONS(func):
     )
     @click.option(
         '--gitlab-uploads-path',
-        metavar='<path>',
         type=click.Path(),
         default='/var/opt/gitlab/gitlab-rails/uploads',
         show_default=True,
@@ -161,7 +155,6 @@ def GITLAB_OPTIONS(func):
     )
     @click.option(
         '--gitlab-version',
-        metavar='<str>',
         default='9.0.0',
         show_default=True,
         help='GitLab target version',
@@ -179,7 +172,6 @@ def GITLAB_OPTIONS(func):
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     '--config-file',
-    metavar='<path>',
     type=click.Path(exists=True, readable=True),
     help='Configuration file to be read for options (in toml format). '
          'Values in this file will be overridden by command line/env var values'
@@ -219,7 +211,6 @@ def cli(ctx, config_file, verbose):
 @TRAC_OPTIONS
 @click.option(
     '--from-export-file',
-    metavar='<path>',
     type=click.Path(exists=True, readable=True),
     help="Don't retrieve Trac project from an instance, read it from a "
          "previously exported file instead; the file format will be guessed "
@@ -239,7 +230,7 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
         project = _loads(content, format=fmt)
         authors = project['authors']
     else:
-        LOG.info('crawling Trac instance: %s', sanitize_url(trac_uri))
+        LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
         source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
                               ssl_verify=ssl_verify)
         authors = trac.authors_get(source)
@@ -259,7 +250,6 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
 )
 @click.option(
     '--out-file',
-    metavar='<path>',
     type=click.Path(writable=True),
     help='Output file. If not specified, result will be written to stdout.'
 )
@@ -268,7 +258,7 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):
     """export a complete Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
     #
-    LOG.info('crawling Trac instance: %s', sanitize_url(trac_uri))
+    LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
     source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
                             ssl_verify=ssl_verify)
     project = trac.project_get(source, collect_authors=True)
@@ -283,28 +273,26 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):
 
 @cli.command()
 @click.option(
-    '-u', '--usermap',
-    type=(six.u, six.u),
+    '-u', '--umap',
+    type=click.Tuple([str, str]),
+    nargs=2,
     multiple=True,
     help='Mapping from a Trac username to a GitLab username',
 )
 @click.option(
-    '--usermap-file',
-    metavar='<path>...',
+    '--umap-file',
     type=click.Path(exists=True, readable=True),
     multiple=True,
-    help='Additional file to be read for user mappings ([usermap] section in toml format)',
+    help='Additional file to be read for user mappings ([tracboat.usermap] section in toml format)',
 )
 @click.option(
     '--fallback-user',
-    metavar='<str>',
-    default='migration-bot',
+    default='migration-bot@tracboat.su',
     show_default=True,
     help='Default GitLab username to be used when a Trac user has no match in the user map',
 )
 @click.option(
     '--wiki-path',
-    metavar='<path>',
     type=click.Path(),
     default='wiki.export',
     show_default=True,
@@ -312,7 +300,6 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):
 )
 @click.option(
     '--from-export-file',
-    metavar='<path>',
     type=click.Path(exists=True, readable=True),
     help="Don't retrieve Trac project from an instance, read it from a "
          "previously exported file instead; the file format will be guessed "
@@ -331,7 +318,6 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):
 )
 @click.option(
     '--mock-path',
-    metavar='<path>',
     type=click.Path(),
     default='gitlab-mock-export',
     show_default=True,
@@ -339,20 +325,41 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):
 )
 # @click.confirmation_option(prompt='Are you sure you want to proceed with the migration?')
 @click.pass_context
-def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
+def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
             gitlab_project_name, gitlab_db_user, gitlab_db_password, gitlab_db_name,
             gitlab_db_path, gitlab_uploads_path, gitlab_version, wiki_path,
             from_export_file, mock, mock_path):
     """migrate a Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
-    # 0. Build usermap
-    umap = {}
-    config_file = ctx.obj.get('config-file', None)
-    if config_file:
-        umap.update(toml.load(config_file)['usermap'])
-    for mapfile in usermap_file:
-        umap.update(toml.load(mapfile)['usermap'])
-    umap.update({m[0]: m[1] for m in usermap})
+    # 0. Build usermap and user attributes map
+    # TODO cleanup collection process
+    # Detect files to be crawled
+    ufiles =  list(umap_file)
+    cfile = ctx.obj.get('config-file', None)
+    if cfile:
+        ufiles = [cfile] + ufiles
+    # Crawl files in increasing priority (the latter overrides)
+    usermap = {}
+    userattrs = {}
+    for filename in ufiles:
+        conf = toml.load(filename)
+        if 'tracboat' in conf:
+            if 'usermap' in conf['tracboat']:
+                LOG.info('updating usermap with mappings from %r', filename)
+                usermap.update(conf['tracboat']['usermap'])
+            if 'users' in conf['tracboat']:
+                LOG.info('updating user attributes with info from %r', filename)
+                userattrs.update(conf['tracboat']['users'])
+    # Add extra mappings from command line '--umap' args
+    usermap.update({m[0]: m[1] for m in umap if m and m[0] and m[1]})
+    # Look for default user attributes
+    userattrs_default = userattrs.pop('default', {})
+    # Build actual user attributes dict
+    userattrs = defaultdict(lambda: userattrs_default, userattrs)
+    #
+    LOG.debug('usermap is: %r', usermap)
+    LOG.debug('default user attributes are: %r', userattrs_default)
+    LOG.debug('user attributes is: %r', userattrs)
     # 1. Retrieve trac project
     if from_export_file:
         LOG.info('loading Trac instance from export file: %s', from_export_file)
@@ -362,7 +369,7 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
             content = f.read()
         project = _loads(content, format=fmt)
     else:
-        LOG.info('crawling Trac instance: %s', sanitize_url(trac_uri))
+        LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
         source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
                               ssl_verify=ssl_verify)
         project = trac.project_get(source, collect_authors=True)
@@ -385,7 +392,7 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
                                       password=gitlab_db_password,
                                       host=gitlab_db_path)
     # 3. Migrate
-    LOG.debug('Trac: %s', sanitize_url(trac_uri))
+    LOG.debug('Trac: %s', _sanitize_url(trac_uri))
     LOG.debug('GitLab project: %s', gitlab_project_name)
     LOG.debug('GitLab version: %s', gitlab_version)
     LOG.debug('GitLab db path: %s', gitlab_db_path)
@@ -400,7 +407,8 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
         output_wiki_path=wiki_path,
         output_uploads_path=gitlab_uploads_path,
         gitlab_fallback_user=fallback_user,
-        usermap=umap
+        usermap=usermap,
+        userattrs=userattrs,
     )
     LOG.info('migration done.')
 

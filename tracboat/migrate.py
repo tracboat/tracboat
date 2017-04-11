@@ -5,6 +5,7 @@ import re
 import random
 import string
 import logging
+from itertools import chain
 
 import six
 
@@ -164,7 +165,6 @@ def milestone_kwargs(milestone):
         # 'project': None,
     }
 
-
 ################################################################################
 # Conversion API
 ################################################################################
@@ -233,18 +233,35 @@ def generate_password(length=None):
     return ''.join(random.choice(alphabet) for _ in range(length or 30))
 
 
+def create_user(gitlab, email, attributes={}):
+    attrs = {  # set mandatory values to defaults
+        'email': email,
+        'username': email.split('@')[0],
+        'encrypted_password': generate_password(),
+    }
+    attrs.update(attributes)
+    gitlab.create_user(**attrs)
+
+
 def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
-            output_wiki_path, output_uploads_path, gitlab_fallback_user, usermap=None):
+            output_wiki_path, output_uploads_path, gitlab_fallback_user, usermap=None, userattrs=None):
     LOG.info('migrating project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)
     LOG.info('uploads repository path is: %r', output_uploads_path)
     db_model = model.get_model(gitlab_version)
     LOG.info('retrieved database model for GitLab ver. %s: %r', gitlab_version, db_model.__file__)
     gitlab = direct.Connection(gitlab_project_name, db_model, gitlab_db_connector, output_uploads_path, create_missing=True)
     LOG.info('estabilished connection to GitLab database')
-    # 0. Fallback user
-    # TODO allow to specify email
-    gitlab.create_user(email=gitlab_fallback_user+'@gmail.com', username=gitlab_fallback_user, encrypted_password=generate_password())
-    LOG.info('created fallback GitLab user %r', gitlab_fallback_user)
+    # 0. Users
+    for email in chain(six.itervalues(usermap), [gitlab_fallback_user]):
+        attrs = {  # set mandatory values to defaults
+            'email': email,
+            'username': email.split('@')[0],
+            'encrypted_password': generate_password(),
+        }
+        attrs.update(userattrs.get(email, {}))
+        gitlab.create_user(**attrs)
+        LOG.info('created GitLab user %r', email)
+        LOG.debug('created GitLab user %r with attributes: %r', email, attrs)
     # 1. Wiki
     LOG.info('migrating %d wiki pages to: %s', len(trac['wiki']), output_wiki_path)
     migrate_wiki(trac['wiki'], gitlab, output_wiki_path)
