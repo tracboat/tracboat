@@ -8,7 +8,7 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 
@@ -20,7 +20,8 @@ setup(
     author="Federico Ficarelli",
     author_email="federico.ficarelli@gmail.com",
     url="https://github.com/nazavode/tracboat",
-    packages=find_packages(),
+    package_dir={"": "src"},
+    packages=find_packages(where='src'),
     install_requires=[
         'peewee',
         'psycopg2',
