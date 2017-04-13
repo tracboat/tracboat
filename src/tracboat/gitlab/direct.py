@@ -84,7 +84,8 @@ class Connection(ConnectionBase):
             # TODO check for existing namespace
             if self.project_namespace:
                 db_namespace = \
-                    self.model.Namespaces.create(name=self.project_name,
+                    self.model.Namespaces.create(name=self.project_namespace,
+                                                 # TODO investigate path meaning
                                                  path=self.project_namespace,
                                                  **NAMESPACE_DEFAULTS)
                 db_namespace.save()
@@ -168,10 +169,6 @@ class Connection(ConnectionBase):
     def get_user_id(self, email):
         M = self.model
         return M.Users.get(M.Users.email == email).id
-        # if email:
-        #     return M.Users.get(M.Users.email == email).id
-        # elif username:
-        #     return M.Users.get(M.Users.username == username).id
 
     # def get_issues_iid(self):
     #     M = self.model
