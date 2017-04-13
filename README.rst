@@ -233,7 +233,7 @@ This is a fairly complete configuration example with a usermap and
 custom user attributes. You can find additional examples in the
 ``examples/`` directory.
 
-.. code::
+.. code:: ini
 
     # Tracboat will look for values in the [tracboat] section only, so
     # you can merge in a single file values for other applications.
