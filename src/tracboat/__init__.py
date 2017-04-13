@@ -13,6 +13,6 @@ VERSION = __version__
 # bumpversion can only search for {current_version}
 # so we have to parse the version here.
 version_info_t = namedtuple('version_info_t', 'major minor patch release')  # pylint: disable=invalid-name
-_m = re.match(r'(\d+)\.(\d+).(\d+)(-(\w+))?', __version__).groups()
+_m = re.match(r'(\d+)\.(\d+).(\d+)(-(\w+))?', __version__).groups() # pylint: disable=invalid-name
 VERSION_INFO = version_info_t(major=int(_m[0]), minor=int(_m[1]), patch=int(_m[2]), release=_m[4])
 ###################################################
