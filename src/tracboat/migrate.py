@@ -43,7 +43,8 @@ TICKET_STATE_TO_ISSUE_STATE = {
 # Wiki format normalization
 ################################################################################
 
-_pattern_changeset = r'(?sm)In \[changeset:"([^"/]+?)(?:/[^"]+)?"\]:\n\{\{\{(\n#![^\n]+)?\n(.*?)\n\}\}\}'
+_pattern_changeset = \
+    r'(?sm)In \[changeset:"([^"/]+?)(?:/[^"]+)?"\]:\n\{\{\{(\n#![^\n]+)?\n(.*?)\n\}\}\}'
 _matcher_changeset = re.compile(_pattern_changeset)
 
 _pattern_changeset2 = r'\[changeset:([a-zA-Z0-9]+)\]'
@@ -67,7 +68,8 @@ def _wikiconvert(text, basepath, multiline=True):
 # Trac ticket metadata conversion
 ################################################################################
 
-def ticket_priority(ticket, priority_to_label=TICKET_PRIORITY_TO_ISSUE_LABEL):
+def ticket_priority(ticket, priority_to_label=None):
+    priority_to_label = priority_to_label or TICKET_PRIORITY_TO_ISSUE_LABEL
     priority = ticket['attributes']['priority']
     if priority in priority_to_label:
         return {priority_to_label[priority]}
@@ -75,7 +77,8 @@ def ticket_priority(ticket, priority_to_label=TICKET_PRIORITY_TO_ISSUE_LABEL):
         return set()
 
 
-def ticket_resolution(ticket, resolution_to_label=TICKET_RESOLUTION_TO_ISSUE_LABEL):
+def ticket_resolution(ticket, resolution_to_label=None):
+    resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
     resolution = ticket['attributes']['resolution']
     if resolution in resolution_to_label:
         return {resolution_to_label[resolution]}
@@ -101,7 +104,8 @@ def ticket_type(ticket):
     return {'type:{}'.format(type.strip())}
 
 
-def ticket_state(ticket, status_to_state=TICKET_STATE_TO_ISSUE_STATE):
+def ticket_state(ticket, status_to_state=None):
+    status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
     state = ticket['attributes']['status']
     if state in status_to_state:
         return status_to_state[state], set()
@@ -141,7 +145,8 @@ def ticket_kwargs(ticket):
 
     return {
         'title': ticket['attributes']['summary'],
-        'description': _wikiconvert(ticket['attributes']['description'], '/issues/', multiline=False),
+        'description': _wikiconvert(ticket['attributes']['description'],
+                                    '/issues/', multiline=False),
         'state': state,
         'labels': ','.join(labels),
         'created_at': ticket['attributes']['time'],
@@ -233,7 +238,8 @@ def generate_password(length=None):
     return ''.join(random.choice(alphabet) for _ in range(length or 30))
 
 
-def create_user(gitlab, email, attributes={}):
+def create_user(gitlab, email, attributes=None):
+    attributes = attributes or {}
     attrs = {  # set mandatory values to defaults
         'email': email,
         'username': email.split('@')[0],

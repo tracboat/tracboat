@@ -14,9 +14,9 @@ def _safe_retrieve_data(data, encoding='base64'):
     try:
         # six.b(data.decode(encoding))
         return six.b(data)
-    except Exception as e:
+    except Exception as err:  # pylint: disable=broad-except
         LOG.exception('error while decoding data from %s', encoding)
-        return str(e)
+        return str(err)
 
 
 def _authors_collect(wiki=None, tickets=None):
@@ -98,7 +98,8 @@ def milestone_get_all_names(source):
     return list(source.ticket.milestone.getAll())
 
 
-def wiki_get_all_pages(source, authors_blacklist=None, contents=True, attachments=True, exclude_system_pages=True):
+def wiki_get_all_pages(source, authors_blacklist=None, contents=True, attachments=True,
+                       exclude_system_pages=True):
     LOG.debug('wiki_get_all_pages')
     authors_blacklist = set(authors_blacklist or [])
     if exclude_system_pages:

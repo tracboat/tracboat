@@ -1,3 +1,6 @@
+# Linting disabled, pulled in original file without modifying
+# pylint: skip-file
+
 # vim: autoindent tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=python fileencoding=utf-8
 '''
 Copyright © 2013

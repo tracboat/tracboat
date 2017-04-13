@@ -5,9 +5,6 @@ import shutil
 import logging
 from datetime import datetime
 
-import six
-import peewee
-
 from . import ConnectionBase, split_project_components
 
 __all__ = ['Connection']
