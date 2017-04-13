@@ -6,7 +6,7 @@ from os import path
 import six
 
 
-__all__ = ['ConnectionBase', 'split_project_components']
+__all__ = ['ConnectionBase', 'get_project_components']
 
 
 def get_project_components(project_name):
@@ -23,9 +23,13 @@ class ConnectionBase(object):
         project = project_name.strip()
         if not project:
             raise ValueError('invalid project name: {!r}'.format(project_name))
-        namespace, project = split_project_components(project)
-        self._project_name = project
-        self._project_namespace = namespace
+        p_name, p_groups = get_project_components(project_name)
+        # TODO support for subgroups
+        # In the meantime we are just creating a group joining all components
+        # in a single identifier
+        p_namespace = '/'.join(p_groups)
+        self._project_name = p_name
+        self._project_namespace = p_namespace
 
     @property
     def project_name(self):

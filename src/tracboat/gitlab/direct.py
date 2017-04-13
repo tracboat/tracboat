@@ -5,7 +5,7 @@ import shutil
 import logging
 from datetime import datetime
 
-from . import ConnectionBase, split_project_components
+from . import ConnectionBase, get_project_components
 
 __all__ = ['Connection']
 
@@ -65,6 +65,7 @@ NOTE_DEFAULTS = {
 class Connection(ConnectionBase):
     def __init__(self, project_name, db_model, db_connector, uploads_path,
                  create_missing=False): # TODO add project and namespace creation kwargs
+        super(Connection, self).__init__(project_name)
         self.model = db_model
         self.model.database_proxy.initialize(db_connector)
         self.uploads_path = uploads_path
@@ -78,24 +79,24 @@ class Connection(ConnectionBase):
         self.model.Issues.create_table(fail_silently=True)
         self.model.LabelLinks.create_table(fail_silently=True)
         self.model.Notes.create_table(fail_silently=True)
-        # If requested, ensure namespace and project are present
-        p_namespace, p_name = split_project_components(project_name)
-        if create_missing and not self._get_project(p_namespace, p_name):
+        if create_missing and not self._get_project(self.project_name, self.project_namespace):
             LOG.debug("project %r doesn't exist, creating...", project_name)
             # TODO check for existing namespace
-            if p_namespace:
-                db_namespace = self.model.Namespaces.create(name=p_namespace,
-                    path=p_namespace, **NAMESPACE_DEFAULTS)
+            if self.project_namespace:
+                db_namespace = \
+                    self.model.Namespaces.create(name=self.project_name,
+                                                 path=self.project_namespace,
+                                                 **NAMESPACE_DEFAULTS)
                 db_namespace.save()
                 namespace_id = db_namespace.id
-                LOG.debug("namespace %r created", p_namespace)
+                LOG.debug("namespace %r created", self.project_namespace)
             else:
                 namespace_id = None
-            db_project = self.model.Projects.create(name=p_name,
+            db_project = self.model.Projects.create(name=self.project_name,
                 namespace=namespace_id, **PROJECT_DEFAULTS)
             db_project.save()
-            LOG.debug("project %r created in namespace %r", p_name, p_namespace)
-        super(Connection, self).__init__(project_name)
+            LOG.debug("project %r created in namespace %r",
+                      self.project_name, self.project_namespace)
 
     def _get_project_id(self, project_name):
         project = self._get_project(project_name)
