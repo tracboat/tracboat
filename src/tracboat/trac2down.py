@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Linting disabled, pulled in original file without modifying
 # pylint: skip-file
 
