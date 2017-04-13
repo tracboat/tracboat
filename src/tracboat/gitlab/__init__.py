@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import abc
+from os import path
 
 import six
 
@@ -8,11 +9,11 @@ import six
 __all__ = ['ConnectionBase', 'split_project_components']
 
 
-def split_project_components(project_name):
-    if '/' in project_name:
-        return project_name.split('/')
-    else:
-        return None, project_name
+def get_project_components(project_name):
+    components = path.normpath(project_name).split(path.sep)
+    project = components[-1].strip()
+    return components[-1].strip(), \
+           filter(lambda c: bool(c), (c.strip() for c in components[:-1]))
 
 
 @six.add_metaclass(abc.ABCMeta)
