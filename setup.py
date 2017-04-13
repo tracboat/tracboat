@@ -8,13 +8,13 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 
 setup(
     name="tracboat",
-    version='0.2.0-alpha',
+    version='0.2.0a',
     description="Trac to GitLab migration utils",
     long_description=long_description,
     author="Federico Ficarelli",

@@ -7,7 +7,7 @@ from collections import namedtuple
 __author__ = 'Federico Ficarelli'
 __copyright__ = 'Copyright (c) 2015 Federico Ficarelli'
 __license__ = 'GNU General Public License v3 (GPLv3)'
-__version__ = '0.2.0-alpha'
+__version__ = '0.2.0a0'
 
 VERSION = __version__
 # bumpversion can only search for {current_version}
