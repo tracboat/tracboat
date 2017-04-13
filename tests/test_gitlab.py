@@ -13,4 +13,4 @@ from tracboat import gitlab
 def test_get_project_components(project_name, exp_project, exp_components):
     project, components = gitlab.get_project_components(project_name)
     assert project == exp_project
-    assert components == exp_components
+    assert list(components) == exp_components
