@@ -332,7 +332,7 @@ this spinoff inherited its
 Changes
 -------
 
-0.2.0-alpha *(unreleased)*
+0.2.0a0 *(unreleased)*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Added
