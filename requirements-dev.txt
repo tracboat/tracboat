@@ -26,4 +26,10 @@ tox==2.7.0
 virtualenv==15.1.0
 wrapt==1.10.10
 
+# The following stuff is needed just to check wether the README.rst
+# would be correctly rendered by PyPI (via rst2html.py)
+pygments==2.2.0
+docutils==0.13.1
+
+# Pull in dist dependencies
 -r requirements.txt
