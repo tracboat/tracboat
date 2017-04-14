@@ -37,13 +37,13 @@ If you want to **install from source**, doing it in a ``virtualenv`` is
     $ cd tracboat
     $ virtualenv -p python2.7 VENV
     $ source VENV/bin/activate
-    $ pip install -r requirements.txt
+    $ pip install -r requirements/dist.txt
     $ pip install -e .
 
 Dependencies
 ------------
 
--  Python >= 2.7 or Python 3.x
+-  Tested on Python 2.7 and Python >= 3.4
 -  `peewee <https://pypi.python.org/pypi/peewee>`__
 -  `psycopg2 <https://pypi.python.org/pypi/psycopg2>`__
 -  `six <https://pypi.python.org/pypi/six>`__

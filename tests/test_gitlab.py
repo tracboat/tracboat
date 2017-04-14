@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import pytest
-from mock import patch
+
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
 
 from tracboat.gitlab import *
 
