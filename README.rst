@@ -1,8 +1,6 @@
 .. figure:: https://nazavode.github.io/img/lifeboat-banner.png
    :alt: image
 
-   image
-
 TracBoat
 ========
 
