@@ -41,7 +41,8 @@ class ConnectionBase(object):
 
     @property
     def project_qualname(self):
-        return self.project_namespace + '/' + self.project_name
+        return (self.project_namespace + '/'  if self.project_namespace else '') + \
+               self.project_name
 
     @property
     def project_id(self):
