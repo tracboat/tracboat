@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import ssl
 import logging
+import ssl
 
 import six
 from six.moves import xmlrpc_client as xmlrpc
-
 
 LOG = logging.getLogger(__name__)
 
@@ -23,9 +22,9 @@ def _authors_collect(wiki=None, tickets=None):
     wiki = wiki or {}
     tickets = tickets or {}
     return list(set(
-        [page['attributes']['author'] for page in six.itervalues(wiki)] + \
-        [ticket['attributes']['reporter'] for ticket in six.itervalues(tickets)] + \
-        [ticket['attributes']['owner'] for ticket in six.itervalues(tickets)] + \
+        [page['attributes']['author'] for page in six.itervalues(wiki)] +
+        [ticket['attributes']['reporter'] for ticket in six.itervalues(tickets)] +
+        [ticket['attributes']['owner'] for ticket in six.itervalues(tickets)] +
         [change['author'] for ticket in six.itervalues(tickets) for change in ticket['changelog']]
     ))
 
@@ -84,7 +83,7 @@ def milestone_get_all(source):
     LOG.debug('milestone_get_all')
     return {
         milestone: source.ticket.milestone.get(milestone)
-            for milestone in milestone_get_all_names(source)
+        for milestone in milestone_get_all_names(source)
     }
 
 
@@ -117,7 +116,7 @@ def wiki_get_all_pages(source, authors_blacklist=None, contents=True, attachment
         LOG.debug('wiki_get_all_pages is blacklisting authors: %s', authors_blacklist)
         pages = {
             k: v for k, v in six.iteritems(pages)
-                if v['attributes']['author'] not in authors_blacklist
+            if v['attributes']['author'] not in authors_blacklist
         }
     if contents:
         for pagename, pagedict in six.iteritems(pages):
@@ -128,7 +127,7 @@ def wiki_get_all_pages(source, authors_blacklist=None, contents=True, attachment
             LOG.debug('wiki_get_all_pages is retrieving attachments for wiki page %s', pagename)
             pagedict['attachments'] = {
                 filename: _safe_retrieve_data(source.wiki.getAttachment(filename).data)
-                    for filename in source.wiki.listAttachments(pagename)
+                for filename in source.wiki.listAttachments(pagename)
             }
     return pages
 
@@ -154,5 +153,6 @@ def authors_get(source, from_wiki=True, from_tickets=True):
 
 
 def connect(url, encoding='UTF-8', use_datetime=True, ssl_verify=True):
+    # pylint: disable=protected-access
     context = None if ssl_verify else ssl._create_unverified_context()
     return xmlrpc.ServerProxy(url, encoding=encoding, use_datetime=use_datetime, context=context)

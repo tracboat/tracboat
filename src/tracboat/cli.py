@@ -6,31 +6,31 @@
 # pylint: disable=too-many-statements
 
 import ast
-import json
 import errno
-import pickle
 import functools
+import json
 import logging
+import pickle
+from collections import defaultdict
 from os import path, makedirs
 from pprint import pformat
-from collections import defaultdict
-from six.moves.urllib import parse as urllib  # pylint: disable=import-error
 
 import click
-import toml
 import peewee
+import toml
 from bson import json_util
+from six.moves.urllib import parse as urllib  # pylint: disable=import-error
 
+from . import VERSION
 from . import migrate as trac_migrate
 from . import trac
-from . import VERSION
-
 
 CONTEXT_SETTINGS = {
     'max_content_width': 120,
     'auto_envvar_prefix': 'TRACBOAT',
     'default_map': {},
 }
+
 
 ################################################################################
 # utils
@@ -94,6 +94,7 @@ def _sanitize_url(url):
                                  parts.query, parts.fragment))
     return url
 
+
 ################################################################################
 # common parameter groups
 ################################################################################
@@ -114,6 +115,7 @@ def TRAC_OPTIONS(func):  # pylint: disable=invalid-name
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -163,6 +165,7 @@ def GITLAB_OPTIONS(func):  # pylint: disable=invalid-name
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -232,8 +235,7 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
         authors = project['authors']
     else:
         LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
-        source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
-                              ssl_verify=ssl_verify)
+        source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True, ssl_verify=ssl_verify)
         authors = trac.authors_get(source)
     #
     LOG.info('done collecting Trac users')
@@ -260,8 +262,7 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):  # pylint: disable=rede
     LOG = logging.getLogger(ctx.info_name)
     #
     LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
-    source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
-                          ssl_verify=ssl_verify)
+    source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True, ssl_verify=ssl_verify)
     project = trac.project_get(source, collect_authors=True)
     project = _dumps(project, fmt=format)
     if out_file:
@@ -341,7 +342,7 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         ufiles = [cfile] + ufiles
     # Crawl files in increasing priority (the latter overrides)
     usermap = {}
-    attributes = {}
+    userattrs = {}
     for filename in ufiles:
         conf = toml.load(filename)
         if 'tracboat' in conf:
@@ -350,13 +351,14 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
                 usermap.update(conf['tracboat']['usermap'])
             if 'users' in conf['tracboat']:
                 LOG.info('updating user attributes with info from %r', filename)
-                attributes.update(conf['tracboat']['users'])
+                userattrs.update(conf['tracboat']['users'])
     # Add extra mappings from command line '--umap' args
     usermap.update({m[0]: m[1] for m in umap if m and m[0] and m[1]})
     # Look for default user attributes
-    userattrs_default = attributes.pop('default', {})
-    # Build actual user attributes dict
-    userattrs = defaultdict(lambda: userattrs_default, attributes)
+    userattrs_default = userattrs.pop('default', {})
+    # Build actual user attributes dict adding default behaviour
+    # pylint: disable=redefined-variable-type
+    userattrs = defaultdict(lambda: userattrs_default, userattrs)
     #
     LOG.debug('usermap is: %r', usermap)
     LOG.debug('default user attributes are: %r', userattrs_default)
@@ -371,8 +373,7 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         project = _loads(content, fmt=fmt)
     else:
         LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
-        source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
-                              ssl_verify=ssl_verify)
+        source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True, ssl_verify=ssl_verify)
         project = trac.project_get(source, collect_authors=True)
     # 2. Connect to database
     if mock:
@@ -388,9 +389,9 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         db_connector = peewee.SqliteDatabase(path.join(db_path, 'database.sqlite3'))
     else:
         LOG.info('migrating Trac project to GitLab')
-        db_connector = peewee.PostgresqlDatabase(  # pylint: disable=redefined-variable-type
-            gitlab_db_name, user=gitlab_db_user, password=gitlab_db_password,
-            host=gitlab_db_path)
+        # pylint: disable=redefined-variable-type
+        db_connector = peewee.PostgresqlDatabase(gitlab_db_name, user=gitlab_db_user,
+                                                 password=gitlab_db_password, host=gitlab_db_path)
     # 3. Migrate
     LOG.debug('Trac: %s', _sanitize_url(trac_uri))
     LOG.debug('GitLab project: %s', gitlab_project_name)
@@ -411,6 +412,7 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         userattrs=userattrs,
     )
     LOG.info('migration done.')
+
 
 ################################################################################
 # setuptools entrypoint

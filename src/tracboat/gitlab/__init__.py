@@ -5,15 +5,15 @@ from os import path
 
 import six
 
-
-__all__ = ['ConnectionBase', 'get_project_components']
+__all__ = [
+    'ConnectionBase',
+    'get_project_components',
+]
 
 
 def get_project_components(project_name):
     components = path.normpath(project_name).split(path.sep)
-    project = components[-1].strip()
-    return components[-1].strip(), \
-           filter(lambda c: bool(c), (c.strip() for c in components[:-1]))
+    return components[-1].strip(), filter(bool, (c.strip() for c in components[:-1]))
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -41,12 +41,13 @@ class ConnectionBase(object):
 
     @property
     def project_qualname(self):
-        return (self.project_namespace + '/'  if self.project_namespace else '') + \
+        return (self.project_namespace + '/' if self.project_namespace else '') + \
                self.project_name
 
     @property
     def project_id(self):
         if not hasattr(self, '_project_id'):
+            # pylint: disable=attribute-defined-outside-init
             self._project_id = self._get_project_id(self.project_name)
         return self._project_id
 
@@ -78,10 +79,6 @@ class ConnectionBase(object):
     def get_user_id(self, username):
         raise NotImplementedError()
 
-    # @abc.abstractmethod
-    # def get_issues_iid(self):
-    #     raise NotImplementedError()
-
     @abc.abstractmethod
     def create_milestone(self, **kwargs):
         raise NotImplementedError()
@@ -99,5 +96,5 @@ class ConnectionBase(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def save_wiki_attachment(self, path, binary):
+    def save_wiki_attachment(self, outpath, binary):
         raise NotImplementedError()
