@@ -3,6 +3,7 @@
 import os
 import shutil
 import logging
+import codecs
 from datetime import datetime
 
 from . import ConnectionBase
@@ -306,5 +307,5 @@ class Connection(ConnectionBase):
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        with open(filename, "wb") as out_f:
+        with codecs.open(filename, "wb", encoding='utf-8') as out_f:
             out_f.write(binary)
