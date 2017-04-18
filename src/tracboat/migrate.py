@@ -243,7 +243,7 @@ def migrate_wiki(trac_wiki, gitlab, output_dir):
 
 
 def generate_password(length=None):
-    alphabet = string.letters + string.digits + string.punctuation
+    alphabet = string.ascii_letters + string.digits + string.punctuation
     return ''.join(random.choice(alphabet) for _ in range(length or 30))
 
 
