@@ -201,7 +201,7 @@ configuration file to tweak those user creation attributes:
         website_url = "http://www.foo.gov"
 
 Those values will be applied to *all* new accounts created during the
-migration process. However, you can spceify additional ``user``
+migration process. However, you can specify additional ``user``
 subsections to precisely control which values would be used for a
 particular account:
 
@@ -221,7 +221,7 @@ particular account:
         external = false
 
 In this case, all users are going to be created with the attributes
-contained in the ``[tracboat.users.default]`` section except fot the
+contained in the ``[tracboat.users.default]`` section except for the
 boss that asked explicitly for some extra goodies.
 
 Example
