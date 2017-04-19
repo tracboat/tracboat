@@ -2,7 +2,9 @@
 import os
 
 import pytest
+import mock
 import click
+import peewee
 from click.testing import CliRunner
 
 from tracboat import cli
@@ -24,5 +26,10 @@ def test_users(export_file, users):
 ])
 def test_migrate(export_file, tmpdir):
     runner = CliRunner()
-    result = runner.invoke(cli.migrate, obj={}, catch_exceptions=False, args=['--from-export-file', export_file, '--mock', '--mock-path', str(tmpdir)])
+    memory_db = peewee.SqliteDatabase(':memory:')
+    with mock.patch('tracboat.cli.peewee.SqliteDatabase', lambda uri: memory_db):
+        result = runner.invoke(
+            cli.migrate, obj={}, catch_exceptions=False,
+            args=['--from-export-file', export_file, '--mock', '--mock-path', str(tmpdir)]
+        )
     assert result.exit_code == 0
