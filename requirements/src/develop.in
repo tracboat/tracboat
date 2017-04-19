@@ -1,0 +1,19 @@
+tox
+flake8
+pylint==1.6.5  # pylint 1.7.0 is completely screwed up, keeps crashing
+pytest
+pytest-catchlog
+pytest-cov
+pytest-sugar
+bumpversion
+pip-tools
+mock
+
+# The following stuff is needed to 'python setup.py check'
+# the README.rst rendering in PyPI
+docutils
+pygments
+
+# We need to pull in dist dependencies
+# to be able to run tests
+-r dist.in

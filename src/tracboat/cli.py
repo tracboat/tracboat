@@ -1,26 +1,30 @@
 # -*- coding: utf-8 -*-
 
-import os
+# Disabling these due to click api leading to huge functions
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-statements
+
 import ast
 import errno
-import pickle
 import functools
-import logging
-from os import path
-from pprint import pformat
-from six.moves.urllib import parse as urllib
-
-import six
-import click
-import toml
 import json
-import peewee
-from bson import json_util
+import logging
+import pickle
+import codecs
+from collections import defaultdict
+from os import path, makedirs
+from pprint import pformat
 
+import click
+import peewee
+import toml
+from bson import json_util
+from six.moves.urllib import parse as urllib  # pylint: disable=import-error
+
+from . import VERSION
 from . import migrate as trac_migrate
 from . import trac
-from . import VERSION
-
 
 CONTEXT_SETTINGS = {
     'max_content_width': 120,
@@ -28,18 +32,19 @@ CONTEXT_SETTINGS = {
     'default_map': {},
 }
 
+
 ################################################################################
 # utils
 ################################################################################
 
-def _dumps(obj, format=None):
-    if format == 'toml':
+def _dumps(obj, fmt=None):
+    if fmt == 'toml':
         return toml.dumps(obj)
-    elif format == 'json':
+    elif fmt == 'json':
         return json.dumps(obj, sort_keys=True, indent=2, default=json_util.default)
-    elif format == 'python':
+    elif fmt == 'python':
         return pformat(obj, indent=2)
-    elif format == 'pickle':
+    elif fmt == 'pickle':
         return pickle.dumps(obj)
     else:
         return str(obj)
@@ -58,48 +63,46 @@ def _detect_format(filename):
         return 'pickle'
 
 
-def _loads(content, format=None):
-    if format == 'toml':
+def _loads(content, fmt=None):
+    if fmt == 'toml':
         return toml.loads(content)
-    elif format == 'json':
+    elif fmt == 'json':
         return json.loads(content, object_hook=json_util.object_hook)
-    elif format == 'python':
+    elif fmt == 'python':
         return ast.literal_eval(content)
-    elif format == 'pickle':
+    elif fmt == 'pickle':
         return pickle.loads(content)
     else:
         return content
 
 
-def _mkdir_p(path):
+def _mkdir_p(dirpath):
     try:
-        os.makedirs(path)
+        makedirs(dirpath)
     except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
+        if not (exc.errno == errno.EEXIST and path.isdir(dirpath)):
             raise
 
 
-def sanitize_url(url):
+def _sanitize_url(url):
     """Strip out username and password if included in URL"""
     if '@' in url:
         parts = urllib.urlparse(url)
         hostname = parts.hostname
         if parts.port:
             hostname += ":%s" % parts.port
-        url = urllib.urlunparse((parts.scheme, hostname, parts.path,
-                          parts.params, parts.query, parts.fragment))
+        url = urllib.urlunparse((parts.scheme, hostname, parts.path, parts.params,
+                                 parts.query, parts.fragment))
     return url
+
 
 ################################################################################
 # common parameter groups
 ################################################################################
 
-def TRAC_OPTIONS(func):
+def TRAC_OPTIONS(func):  # pylint: disable=invalid-name
     @click.option(
         '--trac-uri',
-        metavar='<uri>',
         default='http://localhost/xmlrpc',
         show_default=True,
         help='uri of the Trac instance XMLRpc endpoint',
@@ -113,39 +116,35 @@ def TRAC_OPTIONS(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
+
     return wrapper
 
 
-def GITLAB_OPTIONS(func):
+def GITLAB_OPTIONS(func):  # pylint: disable=invalid-name
     @click.option(
         '--gitlab-project-name',
-        metavar='<str>',
         default='migrated/trac-project',
         show_default=True,
         help='GitLab destination project name',
     )
     @click.option(
         '--gitlab-db-user',
-        metavar='<str>',
         default='gitlab',
         show_default=True,
         help='GitLab database username',
     )
     @click.option(
         '--gitlab-db-password',
-        metavar='<str>',
         help='GitLab database password',
     )
     @click.option(
         '--gitlab-db-name',
-        metavar='<str>',
         default='gitlabhq_production',
         show_default=True,
         help='GitLab database schema name',
     )
     @click.option(
         '--gitlab-db-path',
-        metavar='<path>',
         type=click.Path(),
         default='/var/opt/gitlab/postgresql/',
         show_default=True,
@@ -153,7 +152,6 @@ def GITLAB_OPTIONS(func):
     )
     @click.option(
         '--gitlab-uploads-path',
-        metavar='<path>',
         type=click.Path(),
         default='/var/opt/gitlab/gitlab-rails/uploads',
         show_default=True,
@@ -161,7 +159,6 @@ def GITLAB_OPTIONS(func):
     )
     @click.option(
         '--gitlab-version',
-        metavar='<str>',
         default='9.0.0',
         show_default=True,
         help='GitLab target version',
@@ -169,6 +166,7 @@ def GITLAB_OPTIONS(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -179,7 +177,6 @@ def GITLAB_OPTIONS(func):
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
     '--config-file',
-    metavar='<path>',
     type=click.Path(exists=True, readable=True),
     help='Configuration file to be read for options (in toml format). '
          'Values in this file will be overridden by command line/env var values'
@@ -219,7 +216,6 @@ def cli(ctx, config_file, verbose):
 @TRAC_OPTIONS
 @click.option(
     '--from-export-file',
-    metavar='<path>',
     type=click.Path(exists=True, readable=True),
     help="Don't retrieve Trac project from an instance, read it from a "
          "previously exported file instead; the file format will be guessed "
@@ -234,14 +230,13 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
         LOG.info('loading Trac instance from export file: %s', from_export_file)
         fmt = _detect_format(from_export_file)
         LOG.debug('detected file format: %s', fmt)
-        with open(from_export_file, 'r') as f:
-            content = f.read()
-        project = _loads(content, format=fmt)
+        with codecs.open(from_export_file, encoding='utf-8') as export_f:
+            content = export_f.read()
+        project = _loads(content, fmt=fmt)
         authors = project['authors']
     else:
-        LOG.info('crawling Trac instance: %s', sanitize_url(trac_uri))
-        source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
-                              ssl_verify=ssl_verify)
+        LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
+        source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True, ssl_verify=ssl_verify)
         authors = trac.authors_get(source)
     #
     LOG.info('done collecting Trac users')
@@ -259,52 +254,48 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
 )
 @click.option(
     '--out-file',
-    metavar='<path>',
     type=click.Path(writable=True),
     help='Output file. If not specified, result will be written to stdout.'
 )
 @click.pass_context
-def export(ctx, trac_uri, ssl_verify, format, out_file):
+def export(ctx, trac_uri, ssl_verify, format, out_file):  # pylint: disable=redefined-builtin
     """export a complete Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
     #
-    LOG.info('crawling Trac instance: %s', sanitize_url(trac_uri))
-    source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
-                            ssl_verify=ssl_verify)
+    LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
+    source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True, ssl_verify=ssl_verify)
     project = trac.project_get(source, collect_authors=True)
-    project = _dumps(project, format=format)
+    project = _dumps(project, fmt=format)
     if out_file:
         LOG.info('writing export to %s', out_file)
-        with open(out_file, 'w') as f:
-            f.write(project)
+        with codecs.open(out_file, 'wb', encoding='utf-8') as out_f:
+            out_f.write(project)
     else:
         click.echo(project)
 
 
 @cli.command()
 @click.option(
-    '-u', '--usermap',
-    type=(six.u, six.u),
+    '-u', '--umap',
+    type=click.Tuple([str, str]),
+    nargs=2,
     multiple=True,
     help='Mapping from a Trac username to a GitLab username',
 )
 @click.option(
-    '--usermap-file',
-    metavar='<path>...',
+    '--umap-file',
     type=click.Path(exists=True, readable=True),
     multiple=True,
-    help='Additional file to be read for user mappings ([usermap] section in toml format)',
+    help='Additional file to be read for user mappings ([tracboat.usermap] section in toml format)',
 )
 @click.option(
     '--fallback-user',
-    metavar='<str>',
-    default='migration-bot',
+    default='migration-bot@tracboat.su',
     show_default=True,
     help='Default GitLab username to be used when a Trac user has no match in the user map',
 )
 @click.option(
     '--wiki-path',
-    metavar='<path>',
     type=click.Path(),
     default='wiki.export',
     show_default=True,
@@ -312,7 +303,6 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):
 )
 @click.option(
     '--from-export-file',
-    metavar='<path>',
     type=click.Path(exists=True, readable=True),
     help="Don't retrieve Trac project from an instance, read it from a "
          "previously exported file instead; the file format will be guessed "
@@ -331,7 +321,6 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):
 )
 @click.option(
     '--mock-path',
-    metavar='<path>',
     type=click.Path(),
     default='gitlab-mock-export',
     show_default=True,
@@ -339,32 +328,53 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):
 )
 # @click.confirmation_option(prompt='Are you sure you want to proceed with the migration?')
 @click.pass_context
-def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
+def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
             gitlab_project_name, gitlab_db_user, gitlab_db_password, gitlab_db_name,
             gitlab_db_path, gitlab_uploads_path, gitlab_version, wiki_path,
             from_export_file, mock, mock_path):
     """migrate a Trac instance"""
     LOG = logging.getLogger(ctx.info_name)
-    # 0. Build usermap
-    umap = {}
-    config_file = ctx.obj.get('config-file', None)
-    if config_file:
-        umap.update(toml.load(config_file)['usermap'])
-    for mapfile in usermap_file:
-        umap.update(toml.load(mapfile)['usermap'])
-    umap.update({m[0]: m[1] for m in usermap})
+    # 0. Build usermap and user attributes map
+    # TODO cleanup collection process
+    # Detect files to be crawled
+    ufiles = list(umap_file)
+    cfile = ctx.obj.get('config-file', None)
+    if cfile:
+        ufiles = [cfile] + ufiles
+    # Crawl files in increasing priority (the latter overrides)
+    usermap = {}
+    userattrs = {}
+    for filename in ufiles:
+        conf = toml.load(filename)
+        if 'tracboat' in conf:
+            if 'usermap' in conf['tracboat']:
+                LOG.info('updating usermap with mappings from %r', filename)
+                usermap.update(conf['tracboat']['usermap'])
+            if 'users' in conf['tracboat']:
+                LOG.info('updating user attributes with info from %r', filename)
+                userattrs.update(conf['tracboat']['users'])
+    # Add extra mappings from command line '--umap' args
+    usermap.update({m[0]: m[1] for m in umap if m and m[0] and m[1]})
+    # Look for default user attributes
+    userattrs_default = userattrs.pop('default', {})
+    # Build actual user attributes dict adding default behaviour
+    # pylint: disable=redefined-variable-type
+    userattrs = defaultdict(lambda: userattrs_default, userattrs)
+    #
+    LOG.debug('usermap is: %r', usermap)
+    LOG.debug('default user attributes are: %r', userattrs_default)
+    LOG.debug('user attributes is: %r', userattrs)
     # 1. Retrieve trac project
     if from_export_file:
         LOG.info('loading Trac instance from export file: %s', from_export_file)
         fmt = _detect_format(from_export_file)
         LOG.debug('detected file format: %s', fmt)
-        with open(from_export_file, 'r') as f:
-            content = f.read()
-        project = _loads(content, format=fmt)
+        with codecs.open(from_export_file, 'rb', encoding='utf-8') as export_f:
+            content = export_f.read()
+        project = _loads(content, fmt=fmt)
     else:
-        LOG.info('crawling Trac instance: %s', sanitize_url(trac_uri))
-        source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True,
-                              ssl_verify=ssl_verify)
+        LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
+        source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True, ssl_verify=ssl_verify)
         project = trac.project_get(source, collect_authors=True)
     # 2. Connect to database
     if mock:
@@ -380,12 +390,11 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
         db_connector = peewee.SqliteDatabase(path.join(db_path, 'database.sqlite3'))
     else:
         LOG.info('migrating Trac project to GitLab')
-        db_connector = \
-            peewee.PostgresqlDatabase(gitlab_db_name, user=gitlab_db_user,
-                                      password=gitlab_db_password,
-                                      host=gitlab_db_path)
+        # pylint: disable=redefined-variable-type
+        db_connector = peewee.PostgresqlDatabase(gitlab_db_name, user=gitlab_db_user,
+                                                 password=gitlab_db_password, host=gitlab_db_path)
     # 3. Migrate
-    LOG.debug('Trac: %s', sanitize_url(trac_uri))
+    LOG.debug('Trac: %s', _sanitize_url(trac_uri))
     LOG.debug('GitLab project: %s', gitlab_project_name)
     LOG.debug('GitLab version: %s', gitlab_version)
     LOG.debug('GitLab db path: %s', gitlab_db_path)
@@ -400,13 +409,15 @@ def migrate(ctx, usermap, usermap_file, fallback_user, trac_uri, ssl_verify,
         output_wiki_path=wiki_path,
         output_uploads_path=gitlab_uploads_path,
         gitlab_fallback_user=fallback_user,
-        usermap=umap
+        usermap=usermap,
+        userattrs=userattrs,
     )
     LOG.info('migration done.')
+
 
 ################################################################################
 # setuptools entrypoint
 ################################################################################
 
 def main():
-    cli(obj={})
+    cli(obj={})  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter

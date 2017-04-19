@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 
-import os
-import re
-import random
-import string
 import logging
+import os
+import random
+import re
+import string
+from itertools import chain
 
 import six
 
 from tracboat import trac2down
-from tracboat.gitlab import model
 from tracboat.gitlab import direct  # TODO selectable mode (api/direct)
+from tracboat.gitlab import model
 
 __all__ = ['migrate']
 
 LOG = logging.getLogger(__name__)
-
 
 TICKET_PRIORITY_TO_ISSUE_LABEL = {
     'high': 'prio:high',
@@ -42,31 +42,35 @@ TICKET_STATE_TO_ISSUE_STATE = {
 # Wiki format normalization
 ################################################################################
 
-_pattern_changeset = r'(?sm)In \[changeset:"([^"/]+?)(?:/[^"]+)?"\]:\n\{\{\{(\n#![^\n]+)?\n(.*?)\n\}\}\}'
-_matcher_changeset = re.compile(_pattern_changeset)
+CHANGESET_REX = re.compile(
+    r'(?sm)In \[changeset:"([^"/]+?)(?:/[^"]+)?"\]:\n\{\{\{(\n#![^\n]+)?\n(.*?)\n\}\}\}'
+)
 
-_pattern_changeset2 = r'\[changeset:([a-zA-Z0-9]+)\]'
-_matcher_changeset2 = re.compile(_pattern_changeset2)
+CHANGESET2_REX = re.compile(
+    r'\[changeset:([a-zA-Z0-9]+)\]'
+)
 
 
-def _format_changeset_comment(m):
-    return 'In changeset ' + m.group(1) + ':\n> ' + m.group(3).replace('\n', '\n> ')
+def _format_changeset_comment(rex):
+    return 'In changeset ' + rex.group(1) + ':\n> ' + rex.group(3).replace('\n', '\n> ')
 
 
 def _wikifix(text):
-    text = _matcher_changeset.sub(_format_changeset_comment, text)
-    text = _matcher_changeset2.sub(r'\1', text)
+    text = CHANGESET_REX.sub(_format_changeset_comment, text)
+    text = CHANGESET2_REX.sub(r'\1', text)
     return text
 
 
 def _wikiconvert(text, basepath, multiline=True):
     return trac2down.convert(_wikifix(text), basepath, multiline)
 
+
 ################################################################################
 # Trac ticket metadata conversion
 ################################################################################
 
-def ticket_priority(ticket, priority_to_label=TICKET_PRIORITY_TO_ISSUE_LABEL):
+def ticket_priority(ticket, priority_to_label=None):
+    priority_to_label = priority_to_label or TICKET_PRIORITY_TO_ISSUE_LABEL
     priority = ticket['attributes']['priority']
     if priority in priority_to_label:
         return {priority_to_label[priority]}
@@ -74,7 +78,8 @@ def ticket_priority(ticket, priority_to_label=TICKET_PRIORITY_TO_ISSUE_LABEL):
         return set()
 
 
-def ticket_resolution(ticket, resolution_to_label=TICKET_RESOLUTION_TO_ISSUE_LABEL):
+def ticket_resolution(ticket, resolution_to_label=None):
+    resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
     resolution = ticket['attributes']['resolution']
     if resolution in resolution_to_label:
         return {resolution_to_label[resolution]}
@@ -96,16 +101,18 @@ def ticket_components(ticket):
 
 
 def ticket_type(ticket):
-    type = ticket['attributes']['type']
-    return {'type:{}'.format(type.strip())}
+    ttype = ticket['attributes']['type']
+    return {'type:{}'.format(ttype.strip())}
 
 
-def ticket_state(ticket, status_to_state=TICKET_STATE_TO_ISSUE_STATE):
+def ticket_state(ticket, status_to_state=None):
+    status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
     state = ticket['attributes']['status']
     if state in status_to_state:
         return status_to_state[state], set()
     else:
         return None, {'state:{}'.format(state)}
+
 
 ################################################################################
 # Trac dict -> GitLab dict conversion
@@ -136,11 +143,12 @@ def ticket_kwargs(ticket):
     state, state_labels = ticket_state(ticket)
 
     labels = priority_labels | resolution_labels | version_labels | \
-             component_labels | type_labels | state_labels
+        component_labels | type_labels | state_labels
 
     return {
         'title': ticket['attributes']['summary'],
-        'description': _wikiconvert(ticket['attributes']['description'], '/issues/', multiline=False),
+        'description': _wikiconvert(ticket['attributes']['description'],
+                                    '/issues/', multiline=False),
         'state': state,
         'labels': ','.join(labels),
         'created_at': ticket['attributes']['time'],
@@ -185,8 +193,9 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 # Fix user mapping
                 note_args['author'] = usermap.get(note_args['author'], default_user)
                 note_args['updated_by'] = usermap.get(note_args['updated_by'], default_user)
-                gitlab_note_id = gitlab.comment_issue(issue_id=gitlab_issue_id,
-                    binary_attachment=None, **note_args) # TODO changelog binary attachments!
+                gitlab_note_id = gitlab.comment_issue(
+                    # TODO changelog binary attachments
+                    issue_id=gitlab_issue_id, binary_attachment=None, **note_args)
                 LOG.debug('migrated ticket #%s change -> %s', ticket_id, gitlab_note_id)
 
 
@@ -220,31 +229,57 @@ def migrate_wiki(trac_wiki, gitlab, output_dir):
         # Add orphaned attachments to page
         if orphaned:
             converted_page += '\n\n'
-            converted_page += '##### During migration the following orphaned attachments have been found:\n'
-            for f in orphaned:
-                converted_page += '- [%s](/uploads/migrated/%s)\n' % (f, f)
+            converted_page += '''
+##### Orphaned attachments
+##### These are the attachments files found but with no references
+##### in the page contents.
+##### During migration the following orphaned attachments have been found:
+'''
+            for filename in orphaned:
+                converted_page += '- [%s](/uploads/migrated/%s)\n' % (filename, filename)
         # Writeout!
         trac2down.save_file(converted_page, title, version, last_modified, author, output_dir)
         LOG.debug('migrated wiki page %s', title)
 
 
 def generate_password(length=None):
-    alphabet = string.letters + string.digits + string.punctuation
+    alphabet = string.ascii_letters + string.digits + string.punctuation
     return ''.join(random.choice(alphabet) for _ in range(length or 30))
 
 
+def create_user(gitlab, email, attributes=None):
+    attributes = attributes or {}
+    attrs = {  # set mandatory values to defaults
+        'email': email,
+        'username': email.split('@')[0],
+        'encrypted_password': generate_password(),
+    }
+    attrs.update(attributes)
+    gitlab.create_user(**attrs)
+
+
+# pylint: disable=too-many-arguments
 def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
-            output_wiki_path, output_uploads_path, gitlab_fallback_user, usermap=None):
+            output_wiki_path, output_uploads_path, gitlab_fallback_user,
+            usermap=None, userattrs=None):
     LOG.info('migrating project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)
     LOG.info('uploads repository path is: %r', output_uploads_path)
     db_model = model.get_model(gitlab_version)
     LOG.info('retrieved database model for GitLab ver. %s: %r', gitlab_version, db_model.__file__)
-    gitlab = direct.Connection(gitlab_project_name, db_model, gitlab_db_connector, output_uploads_path, create_missing=True)
+    gitlab = direct.Connection(gitlab_project_name, db_model, gitlab_db_connector,
+                               output_uploads_path, create_missing=True)
     LOG.info('estabilished connection to GitLab database')
-    # 0. Fallback user
-    # TODO allow to specify email
-    gitlab.create_user(email=gitlab_fallback_user+'@gmail.com', username=gitlab_fallback_user, encrypted_password=generate_password())
-    LOG.info('created fallback GitLab user %r', gitlab_fallback_user)
+    # 0. Users
+    for email in chain(six.itervalues(usermap), [gitlab_fallback_user]):
+        attrs = {  # set mandatory values to defaults
+            'email': email,
+            'username': email.split('@')[0],
+            'encrypted_password': generate_password(),
+        }
+        attrs.update(userattrs.get(email, {}))
+        gitlab.create_user(**attrs)
+        LOG.info('created GitLab user %r', email)
+        LOG.debug('created GitLab user %r with attributes: %r', email, attrs)
     # 1. Wiki
     LOG.info('migrating %d wiki pages to: %s', len(trac['wiki']), output_wiki_path)
     migrate_wiki(trac['wiki'], gitlab, output_wiki_path)

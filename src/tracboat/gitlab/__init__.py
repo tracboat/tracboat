@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 
 import abc
+from os import path
 
 import six
 
+__all__ = [
+    'ConnectionBase',
+    'get_project_components',
+]
 
-__all__ = ['ConnectionBase', 'split_project_components']
 
-
-def split_project_components(project_name):
-    if '/' in project_name:
-        return project_name.split('/')
-    else:
-        return None, project_name
+def get_project_components(project_name):
+    components = path.normpath(project_name).split(path.sep)
+    return components[-1].strip(), filter(bool, (c.strip() for c in components[:-1]))
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -22,9 +23,13 @@ class ConnectionBase(object):
         project = project_name.strip()
         if not project:
             raise ValueError('invalid project name: {!r}'.format(project_name))
-        namespace, project = split_project_components(project)
-        self._project_name = project
-        self._project_namespace = namespace
+        p_name, p_groups = get_project_components(project_name)
+        # TODO support for subgroups
+        # In the meantime we are just creating a group joining all components
+        # in a single identifier
+        p_namespace = '/'.join(p_groups)
+        self._project_name = p_name
+        self._project_namespace = p_namespace
 
     @property
     def project_name(self):
@@ -36,11 +41,13 @@ class ConnectionBase(object):
 
     @property
     def project_qualname(self):
-        return self.project_namespace + '/' + self.project_name
+        return (self.project_namespace + '/' if self.project_namespace else '') + \
+               self.project_name
 
     @property
     def project_id(self):
         if not hasattr(self, '_project_id'):
+            # pylint: disable=attribute-defined-outside-init
             self._project_id = self._get_project_id(self.project_name)
         return self._project_id
 
@@ -72,10 +79,6 @@ class ConnectionBase(object):
     def get_user_id(self, username):
         raise NotImplementedError()
 
-    # @abc.abstractmethod
-    # def get_issues_iid(self):
-    #     raise NotImplementedError()
-
     @abc.abstractmethod
     def create_milestone(self, **kwargs):
         raise NotImplementedError()
@@ -93,5 +96,5 @@ class ConnectionBase(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def save_wiki_attachment(self, path, binary):
+    def save_wiki_attachment(self, outpath, binary):
         raise NotImplementedError()

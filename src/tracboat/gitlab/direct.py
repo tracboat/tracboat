@@ -3,12 +3,10 @@
 import os
 import shutil
 import logging
+import codecs
 from datetime import datetime
 
-import six
-import peewee
-
-from . import ConnectionBase, split_project_components
+from . import ConnectionBase
 
 __all__ = ['Connection']
 
@@ -66,8 +64,10 @@ NOTE_DEFAULTS = {
 
 
 class Connection(ConnectionBase):
-    def __init__(self, project_name, db_model, db_connector, uploads_path,
-                 create_missing=False): # TODO add project and namespace creation kwargs
+    # TODO add project and namespace creation kwargs
+    # pylint: disable=too-many-arguments
+    def __init__(self, project_name, db_model, db_connector, uploads_path, create_missing=False):
+        super(Connection, self).__init__(project_name)
         self.model = db_model
         self.model.database_proxy.initialize(db_connector)
         self.uploads_path = uploads_path
@@ -81,24 +81,25 @@ class Connection(ConnectionBase):
         self.model.Issues.create_table(fail_silently=True)
         self.model.LabelLinks.create_table(fail_silently=True)
         self.model.Notes.create_table(fail_silently=True)
-        # If requested, ensure namespace and project are present
-        p_namespace, p_name = split_project_components(project_name)
-        if create_missing and not self._get_project(p_namespace, p_name):
+        if create_missing and not self._get_project(self.project_name, self.project_namespace):
             LOG.debug("project %r doesn't exist, creating...", project_name)
             # TODO check for existing namespace
-            if p_namespace:
-                db_namespace = self.model.Namespaces.create(name=p_namespace,
-                    path=p_namespace, **NAMESPACE_DEFAULTS)
+            if self.project_namespace:
+                db_namespace = \
+                    self.model.Namespaces.create(name=self.project_namespace,
+                                                 # TODO investigate path meaning
+                                                 path=self.project_namespace,
+                                                 **NAMESPACE_DEFAULTS)
                 db_namespace.save()
                 namespace_id = db_namespace.id
-                LOG.debug("namespace %r created", p_namespace)
+                LOG.debug("namespace %r created", self.project_namespace)
             else:
                 namespace_id = None
-            db_project = self.model.Projects.create(name=p_name,
-                namespace=namespace_id, **PROJECT_DEFAULTS)
+            db_project = self.model.Projects.create(
+                name=self.project_name, namespace=namespace_id, **PROJECT_DEFAULTS)
             db_project.save()
-            LOG.debug("project %r created in namespace %r", p_name, p_namespace)
-        super(Connection, self).__init__(project_name)
+            LOG.debug("project %r created in namespace %r",
+                      self.project_name, self.project_namespace)
 
     def _get_project_id(self, project_name):
         project = self._get_project(project_name)
@@ -110,13 +111,14 @@ class Connection(ConnectionBase):
         M = self.model
         try:
             if p_namespace:
+                # TODO why path is used as an identifier? Investigate!
                 project = M.Projects.select() \
                     .join(M.Namespaces, on=(M.Projects.namespace == M.Namespaces.id)) \
-                    .where((M.Projects.path == p_name) &  # TODO why path is used as an identifier? Investigate!
+                    .where((M.Projects.path == p_name) &
                            (M.Namespaces.path == p_namespace)).get()
             else:
                 project = M.Projects.select().where(M.Projects.name == p_name).get()
-            return project._data
+            return project._data  # pylint: disable=protected-access
         except M.Projects.DoesNotExist:
             return None
 
@@ -125,27 +127,24 @@ class Connection(ConnectionBase):
         # Delete all the uses of the labels of the project.
         for label in M.Labels.select().where(M.Labels.project == self.project_id):
             M.LabelLinks.delete().where(M.LabelLinks.label == label.id).execute()
-            ## You probably do not want to delete the labels themselves, otherwise you'd need to
-            ## set their colour every time when you re-run the migration.
+            # You probably do not want to delete the labels themselves, otherwise you'd need to
+            # set their colour every time when you re-run the migration.
             # label.delete_instance()
         # Delete issues and everything that goes with them...
         for issue in M.Issues.select().where(M.Issues.project == self.project_id):
-            for note in M.Notes.select().where(
-                        (M.Notes.project == self.project_id) &
-                        (M.Notes.noteable_type == 'Issue') &
-                        (M.Notes.noteable == issue.id)):
+            for note in M.Notes.select().where((M.Notes.project == self.project_id) &
+                                               (M.Notes.noteable_type == 'Issue') &
+                                               (M.Notes.noteable == issue.id)):
                 if note.attachment is not None:
                     directory = os.path.join(self.uploads_path, 'note/attachment/%s' % note.id)
                     shutil.rmtree(directory, ignore_errors=True)
-                M.Events.delete().where(
-                    (M.Events.project == self.project_id) &
-                    (M.Events.target_type == 'Note') &
-                    (M.Events.target == note.id)).execute()
+                M.Events.delete().where((M.Events.project == self.project_id) &
+                                        (M.Events.target_type == 'Note') &
+                                        (M.Events.target == note.id)).execute()
                 note.delete_instance()
-            M.Events.delete().where(
-                (M.Events.project == self.project_id) &
-                (M.Events.target_type == 'Issue') &
-                (M.Events.target == issue.id)).execute()
+            M.Events.delete().where((M.Events.project == self.project_id) &
+                                    (M.Events.target_type == 'Issue') &
+                                    (M.Events.target == issue.id)).execute()
             issue.delete_instance()
         M.Milestones.delete().where(
             M.Milestones.project == self.project_id).execute()
@@ -156,7 +155,7 @@ class Connection(ConnectionBase):
             milestone = M.Milestones.select().where(
                 (M.Milestones.title == milestone_name) &
                 (M.Milestones.project == self.project_id)).get()
-            return milestone._data if milestone else None
+            return milestone._data if milestone else None  # pylint: disable=protected-access
         except M.Milestones.DoesNotExist:
             return None
 
@@ -167,12 +166,9 @@ class Connection(ConnectionBase):
         milestone = self.get_milestone(milestone_name)
         return milestone["id"] if milestone else None
 
-    def get_user_id(self, email=None, username=None):
+    def get_user_id(self, email):
         M = self.model
-        if email:
-            return M.Users.get(M.Users.email == email).id
-        elif username:
-            return M.Users.get(M.Users.username == username).id
+        return M.Users.get(M.Users.email == email).id
 
     # def get_issues_iid(self):
     #     M = self.model
@@ -224,9 +220,9 @@ class Connection(ConnectionBase):
         if 'milestone' in kwargs:
             kwargs['milestone'] = self.get_milestone_id(kwargs['milestone'])
         if 'author' in kwargs:
-            kwargs['author'] = self.get_user_id(username=kwargs['author'])
+            kwargs['author'] = self.get_user_id(kwargs['author'])
         if 'assignee' in kwargs:
-            kwargs['assignee'] = self.get_user_id(username=kwargs['assignee'])
+            kwargs['assignee'] = self.get_user_id(kwargs['assignee'])
         issue = M.Issues.create(**kwargs)
         issue.save()
         # 2. Event
@@ -274,9 +270,9 @@ class Connection(ConnectionBase):
         if issue_id:
             kwargs['noteable'] = issue_id
         if 'author' in kwargs:
-            kwargs['author'] = self.get_user_id(username=kwargs['author'])
+            kwargs['author'] = self.get_user_id(kwargs['author'])
         if 'updated_by' in kwargs:
-            kwargs['updated_by'] = self.get_user_id(username=kwargs['updated_by'])
+            kwargs['updated_by'] = self.get_user_id(kwargs['updated_by'])
         # Fix defaults for non-null fields
         opts = dict(NOTE_DEFAULTS)
         opts.update(kwargs)
@@ -300,8 +296,8 @@ class Connection(ConnectionBase):
             if not os.path.exists(directory):
                 os.makedirs(directory)
             path = os.path.join(directory, note.attachment)
-            with open(path, "wb") as f:
-                f.write(binary_attachment)
+            with open(path, "wb") as bin_f:
+                bin_f.write(binary_attachment)
         return note.id
 
     def save_wiki_attachment(self, path, binary):
@@ -311,5 +307,5 @@ class Connection(ConnectionBase):
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        with open(filename, "wb") as f:
-            f.write(binary)
+        with codecs.open(filename, "wb", encoding='utf-8') as out_f:
+            out_f.write(binary)

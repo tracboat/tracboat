@@ -14,13 +14,14 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name="tracboat",
-    version='0.2.0-alpha',
-    description="Trac to GitLab migration utils",
+    version='0.2.0a0',
+    description="Trac to GitLab migration toolbox",
     long_description=long_description,
     author="Federico Ficarelli",
     author_email="federico.ficarelli@gmail.com",
     url="https://github.com/nazavode/tracboat",
-    packages=find_packages(),
+    package_dir={"": "src"},
+    packages=find_packages(where='src'),
     install_requires=[
         'peewee',
         'psycopg2',
@@ -44,7 +45,9 @@ setup(
         'Topic :: Software Development :: Build Tools',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Operating System :: OS Independent',
     ],
     keywords='trac gitlab migration',
