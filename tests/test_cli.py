@@ -25,7 +25,8 @@ def test_users(export_file):
         prj = json.loads(f.read())
     users = prj['authors']
     runner = CliRunner()
-    result = runner.invoke(cli.users, catch_exceptions=False, args=['--from-export-file', export_file])
+    result = runner.invoke(cli.users, catch_exceptions=False,
+                           args=['--from-export-file', export_file])
     assert result.exit_code == 0
     assert result.output == str(users) + '\n'
 
