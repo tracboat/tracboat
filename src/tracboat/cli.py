@@ -11,6 +11,7 @@ import functools
 import json
 import logging
 import pickle
+import codecs
 from collections import defaultdict
 from os import path, makedirs
 from pprint import pformat
@@ -229,7 +230,7 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
         LOG.info('loading Trac instance from export file: %s', from_export_file)
         fmt = _detect_format(from_export_file)
         LOG.debug('detected file format: %s', fmt)
-        with open(from_export_file, 'r') as export_f:
+        with codecs.open(from_export_file, encoding='utf-8') as export_f:
             content = export_f.read()
         project = _loads(content, fmt=fmt)
         authors = project['authors']
@@ -267,7 +268,7 @@ def export(ctx, trac_uri, ssl_verify, format, out_file):  # pylint: disable=rede
     project = _dumps(project, fmt=format)
     if out_file:
         LOG.info('writing export to %s', out_file)
-        with open(out_file, 'w') as out_f:
+        with codecs.open(out_file, 'wb', encoding='utf-8') as out_f:
             out_f.write(project)
     else:
         click.echo(project)
@@ -368,7 +369,7 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         LOG.info('loading Trac instance from export file: %s', from_export_file)
         fmt = _detect_format(from_export_file)
         LOG.debug('detected file format: %s', fmt)
-        with open(from_export_file, 'r') as export_f:
+        with codecs.open(from_export_file, 'rb', encoding='utf-8') as export_f:
             content = export_f.read()
         project = _loads(content, fmt=fmt)
     else:
