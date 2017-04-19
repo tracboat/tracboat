@@ -4,6 +4,8 @@
 TracBoat
 ========
 
+|build-status| |coverage-status| |codeqa| |license-status|
+
 A life boat to escape the Trac ocean liner.
 
 **TracBoat** is a toolbox for exporting whole Trac instances, saving
@@ -340,3 +342,24 @@ Added
 -  Migration to mock GitLab on file system
 -  Creation of missing GitLab users, namespaces and projects
 -  Custom user attributes (#17)
+
+
+.. |build-status| image:: https://travis-ci.org/nazavode/tracboat.svg?branch=master
+    :target: https://travis-ci.org/nazavode/tracboat
+    :alt: Build status
+
+.. |coverage-status| image:: https://codecov.io/gh/nazavode/tracboat/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/nazavode/tracboat
+    :alt: Coverage report
+
+.. |license-status| image:: https://img.shields.io/badge/License-GPL%20v3-blue.svg
+    :target: http://www.gnu.org/licenses/gpl-3.0
+    :alt: License
+
+.. |codeqa| image:: https://api.codacy.com/project/badge/Grade/7c3a29688a074f91b0ce1b89f4d1f3d4
+   :target: https://www.codacy.com/app/federico-ficarelli/tracboat?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=nazavode/tracboat&amp;utm_campaign=Badge_Grade
+   :alt: Codacy
+
+.. .. |pypi| image:: https://badge.fury.io/py/tracboat.svg
+..     :target: https://badge.fury.io/py/tracboat
+..     :alt: PyPI
