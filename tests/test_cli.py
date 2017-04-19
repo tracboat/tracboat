@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+import json
+import codecs
 
 import pytest
 import mock
@@ -11,19 +13,23 @@ from tracboat import cli
 
 __here__ = os.path.abspath(os.path.dirname(__file__))
 
-@pytest.mark.parametrize('export_file,users', [
-    [os.path.join(__here__, 'trac-exampleproject-exported.json'), ['userfoo', 'userbar']],
+@pytest.fixture(params=[
+    os.path.join(__here__, 'trac-exampleproject-exported.json'),
 ])
-def test_users(export_file, users):
+def export_file(request):
+    return request.param
+
+
+def test_users(export_file):
+    with codecs.open(export_file, encoding='utf-8') as f:
+        prj = json.loads(f.read())
+    users = prj['authors']
     runner = CliRunner()
     result = runner.invoke(cli.users, catch_exceptions=False, args=['--from-export-file', export_file])
     assert result.exit_code == 0
-    assert result.output in {"['userfoo', 'userbar']\n", "[u'userfoo', u'userbar']\n"}
+    assert result.output == str(users) + '\n'
 
 
-@pytest.mark.parametrize('export_file', [
-    os.path.join(__here__, 'trac-exampleproject-exported.json'),
-])
 def test_migrate(export_file, tmpdir):
     runner = CliRunner()
     memory_db = peewee.SqliteDatabase(':memory:')
@@ -33,3 +39,7 @@ def test_migrate(export_file, tmpdir):
             args=['--from-export-file', export_file, '--mock', '--mock-path', str(tmpdir)]
         )
     assert result.exit_code == 0
+
+
+def test_migrate_usermap():
+    pass
