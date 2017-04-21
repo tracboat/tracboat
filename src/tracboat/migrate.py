@@ -24,7 +24,7 @@ TICKET_PRIORITY_TO_ISSUE_LABEL = {
 }
 
 TICKET_RESOLUTION_TO_ISSUE_LABEL = {
-    # 'fixed': None,
+    'fixed': 'closed:fixed',
     'invalid': 'closed:invalid',
     'wontfix': 'closed:wontfix',
     'duplicate': 'closed:duplicate',
@@ -77,10 +77,17 @@ def ticket_priority(ticket, priority_to_label=None):
     else:
         return set()
 
+def gitlab_resolution_label(resolution, resolution_to_label=None):
+    resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
+    if resolution in resolution_to_label:
+        return resolution_to_label[resolution]
+    else:
+        raise Exception('No label for "%s" resolution' % resolution)
 
 def ticket_resolution(ticket, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
     resolution = ticket['attributes']['resolution']
+
     if resolution in resolution_to_label:
         return {resolution_to_label[resolution]}
     else:
@@ -104,6 +111,12 @@ def ticket_type(ticket):
     ttype = ticket['attributes']['type']
     return {'type:{}'.format(ttype.strip())}
 
+def gitlab_status_label(status, status_to_state=None):
+    status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
+    if status in status_to_state:
+        return status_to_state[status]
+    else:
+        raise Exception('No label for "%s" status' % status)
 
 def ticket_state(ticket, status_to_state=None):
     status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
@@ -123,8 +136,20 @@ def ticket_state(ticket, status_to_state=None):
 ################################################################################
 
 def change_kwargs(change):
+    if change['field'] == 'comment':
+        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False)
+    elif change['field'] == 'resolution':
+        resolution = gitlab_resolution_label(change['newvalue'])
+        note = '**Resolution** set to ~"%s"' % resolution
+    elif change['field'] == 'status':
+        oldstatus = gitlab_status_label(change['oldvalue'])
+        newstatus = gitlab_status_label(change['newvalue'])
+        note = "**Status** changed from *%s* to *%s*" % (oldstatus, newstatus)
+    else:
+        raise Exception('Unexpected field %s' % change['field'])
+
     return {
-        'note': _wikiconvert(change['newvalue'], '/issues/', multiline=False),
+        'note': note,
         'created_at': change['time'],
         'updated_at': change['time'],
         # References:
@@ -188,8 +213,11 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         LOG.debug('migrated ticket %s -> %s', ticket_id, gitlab_issue_id)
         # Migrate whole changelog
         for change in ticket['changelog']:
-            if change['field'] == 'comment':
+            if change['field'] in ['comment', 'resolution', 'status']:
                 note_args = change_kwargs(change)
+                if note_args['note'] == '':
+                    LOG.info('skip empty comment: %r; change: %r', note_args, change)
+                    continue
                 # Fix user mapping
                 note_args['author'] = usermap.get(note_args['author'], default_user)
                 note_args['updated_by'] = usermap.get(note_args['updated_by'], default_user)
