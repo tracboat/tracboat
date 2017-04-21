@@ -394,13 +394,13 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         db_connector = peewee.PostgresqlDatabase(gitlab_db_name, user=gitlab_db_user,
                                                  password=gitlab_db_password, host=gitlab_db_path)
     # 3. Migrate
-    LOG.debug('Trac: %s', _sanitize_url(trac_uri))
-    LOG.debug('GitLab project: %s', gitlab_project_name)
-    LOG.debug('GitLab version: %s', gitlab_version)
-    LOG.debug('GitLab db path: %s', gitlab_db_path)
-    LOG.debug('GitLab db name: %s', gitlab_db_name)
-    LOG.debug('GitLab uploads: %s', gitlab_uploads_path)
-    LOG.debug('GitLab fallback user: %s', fallback_user)
+    LOG.info('Trac: %s', _sanitize_url(trac_uri))
+    LOG.info('GitLab project: %s', gitlab_project_name)
+    LOG.info('GitLab version: %s', gitlab_version)
+    LOG.info('GitLab db path: %s', gitlab_db_path)
+    LOG.info('GitLab db name: %s', gitlab_db_name)
+    LOG.info('GitLab uploads: %s', gitlab_uploads_path)
+    LOG.info('GitLab fallback user: %s', fallback_user)
     trac_migrate.migrate(
         trac=project,
         gitlab_project_name=gitlab_project_name,

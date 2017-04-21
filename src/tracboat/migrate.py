@@ -6,6 +6,7 @@ import random
 import re
 import string
 from itertools import chain
+from sys import exit
 
 import six
 
@@ -16,6 +17,7 @@ from tracboat.gitlab import model
 __all__ = ['migrate']
 
 LOG = logging.getLogger(__name__)
+logging.basicConfig(filename='comment.log', filemode='w', level=logging.INFO)
 
 TICKET_PRIORITY_TO_ISSUE_LABEL = {
     'high': 'prio:high',
@@ -78,6 +80,12 @@ def ticket_priority(ticket, priority_to_label=None):
     else:
         return set()
 
+def gitlab_resolution_label(resolution, resolution_to_label=None):
+    resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
+    if resolution in resolution_to_label:
+        return resolution_to_label[resolution]
+    else:
+        raise Exception('No label for "%s" resolution' % resolution)
 
 def gitlab_resolution_label(resolution, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
@@ -91,6 +99,7 @@ def gitlab_resolution_label(resolution, resolution_to_label=None):
 def ticket_resolution(ticket, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
     resolution = ticket['attributes']['resolution']
+
     if resolution in resolution_to_label:
         return {resolution_to_label[resolution]}
     else:
@@ -140,6 +149,12 @@ def ticket_type(ticket):
     ttype = ticket['attributes']['type']
     return {'type:{}'.format(ttype.strip())}
 
+def gitlab_status_label(status, status_to_state=None):
+    status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
+    if status in status_to_state:
+        return status_to_state[status]
+    else:
+        raise Exception('No label for "%s" status' % status)
 
 def gitlab_status_label(status, status_to_state=None):
     status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
@@ -195,6 +210,7 @@ def change_kwargs(change):
     }
 
 
+
 def ticket_kwargs(ticket):
     priority_labels = ticket_priority(ticket)
     resolution_labels = ticket_resolution(ticket)
@@ -241,15 +257,24 @@ def milestone_kwargs(milestone):
 ################################################################################
 
 def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
+
     for ticket_id, ticket in six.iteritems(trac_tickets):
         issue_args = ticket_kwargs(ticket)
         # Fix user mapping
         issue_args['author'] = usermap.get(issue_args['author'], default_user)
         issue_args['assignee'] = usermap.get(issue_args['assignee'], default_user)
+
+        issue_args['iid'] = ticket_id
+
+        LOG.info("TICKET: #%r: %r" % (ticket_id, ticket))
+        LOG.info("ISSUE: %r" % issue_args)
+
         # Create
         gitlab_issue_id = gitlab.create_issue(**issue_args)
-        LOG.debug('migrated ticket %s -> %s', ticket_id, gitlab_issue_id)
+        LOG.info('migrated ticket %s -> %s', ticket_id, gitlab_issue_id)
+#        exit(1)
         # Migrate whole changelog
+        LOG.info('changelog: %r', ticket['changelog'])
         for change in ticket['changelog']:
             if change['field'] in ['comment', 'resolution', 'status']:
                 note_args = change_kwargs(change)
@@ -259,17 +284,26 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 # Fix user mapping
                 note_args['author'] = usermap.get(note_args['author'], default_user)
                 note_args['updated_by'] = usermap.get(note_args['updated_by'], default_user)
-                gitlab_note_id = gitlab.comment_issue(
-                    # TODO changelog binary attachments
-                    issue_id=gitlab_issue_id, binary_attachment=None, **note_args)
-                LOG.debug('migrated ticket #%s change -> %s', ticket_id, gitlab_note_id)
-
+                # TODO changelog binary attachments
+                gitlab_note_id = gitlab.comment_issue( issue_id=gitlab_issue_id, binary_attachment=None, **note_args)
+                LOG.info('migrated ticket #%s note: %r', ticket_id, gitlab_note_id)
+            else:
+                LOG.info('skip field: %s', change['field'])
+        exit(1)
 
 def migrate_milestones(trac_milestones, gitlab):
+    LOG.info('migrating %d milestones', len(trac_milestones))
     for title, milestone in six.iteritems(trac_milestones):
         milestone_args = milestone_kwargs(milestone)
+        LOG.info('migrate milestone %r', milestone_args)
         gitlab_milestone_id = gitlab.create_milestone(**milestone_args)
-        LOG.debug('migrated milestone %s -> %s', title, gitlab_milestone_id)
+        # => #<Milestone id: 2456,
+#        title: "v1", project_id: 166, description: "", 
+#due_date: nil, created_at: "2017-04-21 22:45:30", 
+#updated_at: "2017-04-21 22:45:30", state: "active", 
+#iid: 1, title_html: "v1", description_html: "", 
+#start_date: nil>
+        LOG.info('migrated milestone %s -> %s', title, gitlab_milestone_id)
 
 
 def migrate_wiki(trac_wiki, gitlab, output_dir):
@@ -346,11 +380,16 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
         gitlab.create_user(**attrs)
         LOG.info('created GitLab user %r', email)
         LOG.debug('created GitLab user %r with attributes: %r', email, attrs)
+
+    # XXX
+    # if overwite and mode == direct
+    # XXX: this clears also milestones
+    gitlab.clear_issues()
+
     # 1. Wiki
-    LOG.info('migrating %d wiki pages to: %s', len(trac['wiki']), output_wiki_path)
-    migrate_wiki(trac['wiki'], gitlab, output_wiki_path)
+#    LOG.info('migrating %d wiki pages to: %s', len(trac['wiki']), output_wiki_path)
+#    migrate_wiki(trac['wiki'], gitlab, output_wiki_path)
     # 2. Milestones
-    LOG.info('migrating %d milestones', len(trac['milestones']))
     migrate_milestones(trac['milestones'], gitlab)
     # 3. Issues
     LOG.info('migrating %d tickets to issues', len(trac['tickets']))

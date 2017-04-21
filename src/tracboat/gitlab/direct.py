@@ -125,6 +125,7 @@ class Connection(ConnectionBase):
     def clear_issues(self):
         M = self.model
         # Delete all the uses of the labels of the project.
+        # XXX labels could be used by merge requests as well!!!
         for label in M.Labels.select().where(M.Labels.project == self.project_id):
             M.LabelLinks.delete().where(M.LabelLinks.label == label.id).execute()
             # You probably do not want to delete the labels themselves, otherwise you'd need to
@@ -146,6 +147,8 @@ class Connection(ConnectionBase):
                                     (M.Events.target_type == 'Issue') &
                                     (M.Events.target == issue.id)).execute()
             issue.delete_instance()
+
+        # XXX: method is called "Clear issues" but clears milestones?!?!
         M.Milestones.delete().where(
             M.Milestones.project == self.project_id).execute()
 
@@ -196,6 +199,7 @@ class Connection(ConnectionBase):
         kwargs['project'] = self.project_id
         kwargs['created_at'] = datetime.now()
         kwargs['updated_at'] = datetime.now()
+#        LOG.info("CREATE MILESTONE: %r" % kwargs)
         try:
             milestone = M.Milestones.get(
                 (M.Milestones.title == kwargs['title']) &
@@ -204,12 +208,16 @@ class Connection(ConnectionBase):
             #     if k not in ('id', 'iid'):
             #         existing._data[k] = new_milestone._data[k]
             # new_milestone = existing
+#            LOG.info("MILESTONE exists")
         except M.Milestones.DoesNotExist:
             milestone = M.Milestones.create(**kwargs)
+            # XXX hack https://github.com/nazavode/tracboat/issues/23
+            milestone.iid = milestone.id
             milestone.save()
             # new_milestone.iid = M.Milestones.select().where(
             #     M.Milestones.project == self.project_id).aggregate(
             #         peewee.fn.Count(M.Milestones.id)) + 1
+            LOG.info("MILESTONE created: %r" % milestone)
         return milestone.id
 
     def create_issue(self, **kwargs):
