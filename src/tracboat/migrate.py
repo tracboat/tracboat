@@ -139,8 +139,12 @@ def change_kwargs(change):
     if change['field'] == 'comment':
         note = _wikiconvert(change['newvalue'], '/issues/', multiline=False)
     elif change['field'] == 'resolution':
-        resolution = gitlab_resolution_label(change['newvalue'])
-        note = '**Resolution** set to ~"%s"' % resolution
+        if change['newvalue'] == '':
+            resolution = gitlab_resolution_label(change['oldvalue'])
+            note = '**Resolution** ~"%s" deleted' % resolution
+        else:
+            resolution = gitlab_resolution_label(change['newvalue'])
+            note = '**Resolution** set to ~"%s"' % resolution
     elif change['field'] == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
