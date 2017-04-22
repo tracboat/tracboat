@@ -257,8 +257,10 @@ def milestone_kwargs(milestone):
 ################################################################################
 
 def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
+    LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
 
     for ticket_id, ticket in six.iteritems(trac_tickets):
+        LOG.info('migrate #%d: %r', ticket_id, ticket)
         issue_args = ticket_kwargs(ticket)
         # Fix user mapping
         issue_args['author'] = usermap.get(issue_args['author'], default_user)
@@ -272,7 +274,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         # Create
         gitlab_issue_id = gitlab.create_issue(**issue_args)
         LOG.info('migrated ticket %s -> %s', ticket_id, gitlab_issue_id)
-#        exit(1)
+
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
         for change in ticket['changelog']:
@@ -289,7 +291,6 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 LOG.info('migrated ticket #%s note: %r', ticket_id, gitlab_note_id)
             else:
                 LOG.info('skip field: %s', change['field'])
-        exit(1)
 
 def migrate_milestones(trac_milestones, gitlab):
     LOG.info('migrating %d milestones', len(trac_milestones))
@@ -392,7 +393,6 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     # 2. Milestones
     migrate_milestones(trac['milestones'], gitlab)
     # 3. Issues
-    LOG.info('migrating %d tickets to issues', len(trac['tickets']))
     migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap)
     # Farewell
     LOG.info('done migration of project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)
