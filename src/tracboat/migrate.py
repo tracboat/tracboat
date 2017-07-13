@@ -34,6 +34,7 @@ TICKET_RESOLUTION_TO_ISSUE_LABEL = {
 TICKET_STATE_TO_ISSUE_STATE = {
     'new': 'opened',
     'assigned': 'opened',
+    'accepted': 'opened',
     'reopened': 'reopened',
     'closed': 'closed',
 }
