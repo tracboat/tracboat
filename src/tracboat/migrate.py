@@ -78,12 +78,14 @@ def ticket_priority(ticket, priority_to_label=None):
     else:
         return set()
 
+
 def gitlab_resolution_label(resolution, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
     if resolution in resolution_to_label:
         return resolution_to_label[resolution]
     else:
         raise ValueError('no label for {} resolution'.format(resolution))
+
 
 def ticket_resolution(ticket, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
@@ -112,12 +114,14 @@ def ticket_type(ticket):
     ttype = ticket['attributes']['type']
     return {'type:{}'.format(ttype.strip())}
 
+
 def gitlab_status_label(status, status_to_state=None):
     status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
     if status in status_to_state:
         return status_to_state[status]
     else:
         raise ValueError('no label for {} status'.format(status))
+
 
 def ticket_state(ticket, status_to_state=None):
     status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
