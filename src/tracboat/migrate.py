@@ -83,7 +83,7 @@ def gitlab_resolution_label(resolution, resolution_to_label=None):
     if resolution in resolution_to_label:
         return resolution_to_label[resolution]
     else:
-        raise Exception('No label for "%s" resolution' % resolution)
+        raise ValueError('no label for {} resolution'.format(resolution))
 
 def ticket_resolution(ticket, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
@@ -117,7 +117,7 @@ def gitlab_status_label(status, status_to_state=None):
     if status in status_to_state:
         return status_to_state[status]
     else:
-        raise Exception('No label for "%s" status' % status)
+        raise ValueError('no label for {} status'.format(status))
 
 def ticket_state(ticket, status_to_state=None):
     status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
