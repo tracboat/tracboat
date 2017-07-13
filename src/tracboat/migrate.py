@@ -84,13 +84,13 @@ def gitlab_resolution_label(resolution, resolution_to_label=None):
     if resolution in resolution_to_label:
         return resolution_to_label[resolution]
     else:
+        # todo find a meaningful default value for unknown resolutions
         raise ValueError('no label for {} resolution'.format(resolution))
 
 
 def ticket_resolution(ticket, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
     resolution = ticket['attributes']['resolution']
-
     if resolution in resolution_to_label:
         return {resolution_to_label[resolution]}
     else:
@@ -120,6 +120,7 @@ def gitlab_status_label(status, status_to_state=None):
     if status in status_to_state:
         return status_to_state[status]
     else:
+        # todo find a meaningful default value for unknown statuses
         raise ValueError('no label for {} status'.format(status))
 
 
