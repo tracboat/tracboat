@@ -163,11 +163,12 @@ def ticket_kwargs(ticket):
 
 
 def milestone_kwargs(milestone):
+
     return {
         'description': _wikiconvert(milestone['description'], '/milestones/', multiline=False),
         'title': milestone['name'],
         'state': 'closed' if milestone['completed'] else 'active',
-        'due_date': milestone['due'],
+        'due_date': milestone['due'] if milestone['due'] else None,
         # References:
         # 'project': None,
     }
