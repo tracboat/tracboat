@@ -347,17 +347,19 @@ def generate_password(length=None):
     alphabet = string.ascii_letters + string.digits + string.punctuation
     return ''.join(random.choice(alphabet) for _ in range(length or 30))
 
+def create_users(gitlab, usermap, userattrs, gitlab_fallback_user):
+    for email in chain(six.itervalues(usermap), [gitlab_fallback_user]):
+        attrs = {  # set mandatory values to defaults
+            'email': email,
+            'username': email.split('@')[0],
+            'encrypted_password': generate_password(),
+            'two_factor_enabled' : False,
+        }
 
-def create_user(gitlab, email, attributes=None):
-    attributes = attributes or {}
-    attrs = {  # set mandatory values to defaults
-        'email': email,
-        'username': email.split('@')[0],
-        'encrypted_password': generate_password(),
-    }
-    attrs.update(attributes)
-    gitlab.create_user(**attrs)
-
+        attrs.update(userattrs.get(email, {}))
+        gitlab.create_user(**attrs)
+        LOG.info('created GitLab user %r', email)
+        LOG.debug('created GitLab user %r with attributes: %r', email, attrs)
 
 # pylint: disable=too-many-arguments
 def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
@@ -371,20 +373,12 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
                                output_uploads_path, create_missing=True)
     LOG.info('estabilished connection to GitLab database')
     # 0. Users
-    for email in chain(six.itervalues(usermap), [gitlab_fallback_user]):
-        attrs = {  # set mandatory values to defaults
-            'email': email,
-            'username': email.split('@')[0],
-            'encrypted_password': generate_password(),
-        }
-        attrs.update(userattrs.get(email, {}))
-        gitlab.create_user(**attrs)
-        LOG.info('created GitLab user %r', email)
-        LOG.debug('created GitLab user %r with attributes: %r', email, attrs)
+    create_users(gitlab, usermap, userattrs, gitlab_fallback_user)
 
     # XXX
     # if overwite and mode == direct
     # XXX: this clears also milestones
+    # XXX: make configurable
     gitlab.clear_issues()
 
     # 1. Wiki
