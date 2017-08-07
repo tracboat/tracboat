@@ -83,6 +83,7 @@ class Connection(ConnectionBase):
         self.model.Notes.create_table(fail_silently=True)
         if create_missing and not self._get_project(self.project_name, self.project_namespace):
             LOG.debug("project %r doesn't exist, creating...", project_name)
+            raise ValueError('CREATE PROJECT IS BROKEN: %s:' % 'https://github.com/nazavode/tracboat/issues/37')
             # TODO check for existing namespace
             if self.project_namespace:
                 db_namespace = \

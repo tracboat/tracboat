@@ -370,7 +370,7 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     db_model = model.get_model(gitlab_version)
     LOG.info('retrieved database model for GitLab ver. %s: %r', gitlab_version, db_model.__file__)
     gitlab = direct.Connection(gitlab_project_name, db_model, gitlab_db_connector,
-                               output_uploads_path, create_missing=True)
+                               output_uploads_path, create_missing=False)
     LOG.info('estabilished connection to GitLab database')
     # 0. Users
     #create_users(gitlab, usermap, userattrs, gitlab_fallback_user)
