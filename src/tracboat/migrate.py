@@ -299,7 +299,10 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 gitlab_note_id = gitlab.comment_issue( issue_id=gitlab_issue_id, binary_attachment=None, **note_args)
                 LOG.info('migrated ticket #%s note: %r', ticket_id, gitlab_note_id)
             else:
+                # TODO: skip field: description
                 LOG.info('skip field: %s', change['field'])
+                from pprint import pprint
+                pprint(change)
 
 def migrate_milestones(trac_milestones, gitlab):
     LOG.info('migrating %d milestones', len(trac_milestones))
