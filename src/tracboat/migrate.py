@@ -256,6 +256,15 @@ def milestone_kwargs(milestone):
 # Conversion API
 ################################################################################
 
+def sort_changelog(changelog):
+    # Even if the fields and comment have identical date, trac just formats them separately:
+    # - fields
+    # - comments
+    # https://trac.edgewall.org/browser/tags/trac-1.0.15/trac/ticket/templates/ticket_change.html
+    # {'author', 'field', 'newvalue', 'oldvalue', 'permanent', 'time'}
+    # so sort by date and then items by field being comment
+    return sorted(changelog, key = lambda obj: (obj['time'], 1 if obj['field'] == 'comment' else -1, obj['time']))
+
 def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
 
@@ -277,7 +286,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
 
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
-        for change in ticket['changelog']:
+        for change in sort_changelog(ticket['changelog']):
             if change['field'] in ['comment', 'resolution', 'status']:
                 note_args = change_kwargs(change)
                 if note_args['note'] == '':

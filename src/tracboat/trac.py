@@ -37,6 +37,8 @@ def ticket_get_attributes(source, ticket_id):
 
 def ticket_get_changelog(source, ticket_id):
     LOG.debug('ticket_get_changelog of ticket #%s', ticket_id)
+    # the results are ordered by time,permanent,author tuple
+    # https://trac.edgewall.org/browser/tags/trac-1.0.15/trac/ticket/model.py#L383
     return [
         {
             'time': c[0],
