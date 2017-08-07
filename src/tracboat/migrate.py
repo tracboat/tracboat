@@ -373,7 +373,7 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
                                output_uploads_path, create_missing=True)
     LOG.info('estabilished connection to GitLab database')
     # 0. Users
-    create_users(gitlab, usermap, userattrs, gitlab_fallback_user)
+    #create_users(gitlab, usermap, userattrs, gitlab_fallback_user)
 
     # XXX
     # if overwite and mode == direct
