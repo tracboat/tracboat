@@ -17,7 +17,7 @@ from tracboat.gitlab import model
 __all__ = ['migrate']
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig(filename='comment.log', filemode='w', level=logging.INFO)
+#logging.basicConfig(filename='comment.log', filemode='w', level=logging.INFO)
 
 TICKET_PRIORITY_TO_ISSUE_LABEL = {
     'high': 'prio:high',
