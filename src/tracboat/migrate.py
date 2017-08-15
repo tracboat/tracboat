@@ -98,7 +98,11 @@ def ticket_resolution(ticket, resolution_to_label=None):
 
 
 def ticket_version(ticket):
-    version = ticket['attributes']['version']
+    try:
+        version = ticket['attributes']['version']
+    except KeyError:
+        return set()
+
     if version:
         return {'ver:{}'.format(version)}
     else:
