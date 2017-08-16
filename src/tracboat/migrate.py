@@ -86,13 +86,6 @@ def gitlab_resolution_label(resolution, resolution_to_label=None):
     if resolution in resolution_to_label:
         return resolution_to_label[resolution]
     else:
-        raise Exception('No label for "%s" resolution' % resolution)
-
-def gitlab_resolution_label(resolution, resolution_to_label=None):
-    resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
-    if resolution in resolution_to_label:
-        return resolution_to_label[resolution]
-    else:
         # todo find a meaningful default value for unknown resolutions
         raise ValueError('no label for {} resolution'.format(resolution))
 
