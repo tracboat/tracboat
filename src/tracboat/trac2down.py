@@ -44,6 +44,18 @@ def convert(text, base_path, multilines=True):
     text = re.sub(r'^ * ', r'*', text)
     text = re.sub(r'^ \d+. ', r'1.', text)
 
+    reply_re = re.compile(r'Replying to \[comment:(?P<comment_id>\d+)\s+(?P<username>[^]]+)\]:')
+    def reply_replace(m):
+        """
+        Replying to [comment:4 glen]:
+        """
+
+        d = m.groupdict()
+        # NOTE: the comment_id is bogus, should be fixed manually after import
+        d['link'] = '#note_%s' % d['comment_id']
+
+        return "Replying to [%(username)s](%(link)s):" % d
+
     image_re = re.compile(r'\[\[Image\((?:(?P<module>(?:source|wiki)):)?(?P<path>[^)]+)\)\]\]')
     def image_replace(m):
         """
@@ -92,6 +104,7 @@ def convert(text, base_path, multilines=True):
             line = re.sub(r'\!(([A-Z][a-z0-9]+){2,})', r'\1', line)
 
             line = image_re.sub(image_replace, line)
+            line = reply_re.sub(reply_replace, line)
 
             line = re.sub(r'\'\'\'(.*?)\'\'\'', r'*\1*', line)
             line = re.sub(r'\'\'(.*?)\'\'', r'_\1_', line)
