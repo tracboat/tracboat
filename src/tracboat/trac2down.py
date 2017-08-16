@@ -44,6 +44,42 @@ def convert(text, base_path, multilines=True):
     text = re.sub(r'^ * ', r'*', text)
     text = re.sub(r'^ \d+. ', r'1.', text)
 
+    image_re = re.compile(r'\[\[Image\((?:(?P<module>(?:source|wiki)):)?(?P<path>[^)]+)\)\]\]')
+    def image_replace(m):
+        """
+        https://trac.edgewall.org/wiki/WikiFormatting#Images
+
+        [[Image(picture.gif)]] Current page (Ticket, Wiki, Comment)
+
+        [[Image(wiki:WikiFormatting:picture.gif)]] (referring to attachment on another page)
+        [[Image(ticket:1:picture.gif)]] (file attached to a ticket)
+        [[Image(htdocs:picture.gif)]] (referring to a file inside the environment htdocs directory)
+        [[Image(source:/trunk/trac/htdocs/trac_logo_mini.png)]] (a file in repository)
+        """
+
+        module = m.group('module')
+        path = m.group('path')
+
+        d = m.groupdict()
+        d.update({
+            'base_path': os.path.relpath('/tree/master/', base_path),
+            'upload_path' : '/uploads/migrated/%s' % path,
+        })
+
+        if module == 'source':
+            return '![](%(base_path)s/%(path)s)' % d
+        elif module == 'wiki':
+            id, file = path.split(':', 2)
+            d['upload_path'] = '/uploads/migrated/%s' % file
+            d['file'] = file
+            return '![%(file)s](%(upload_path)s)' % d
+        else:
+            if path.startswith('http'):
+                # [[Image(http://example.org/s.jpg)]]
+                return '![%(path)s](%(path)s)' % d
+            else:
+                return '![%(path)s](%(upload_path)s)' % d
+
     a = []
     is_table = False
     for line in text.split('\n'):
@@ -54,9 +90,9 @@ def convert(text, base_path, multilines=True):
             line = re.sub(r'\[source:([^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](%s/\1)' % os.path.relpath('/tree/master/', base_path), line)
             line = re.sub(r'source:([\S]+)', r'[\1](%s/\1)' % os.path.relpath('/tree/master/', base_path), line)
             line = re.sub(r'\!(([A-Z][a-z0-9]+){2,})', r'\1', line)
-            line = re.sub(r'\[\[Image\(source:([^(]+)\)\]\]', r'![](%s/\1)' % os.path.relpath('/tree/master/', base_path), line)
-            line = re.sub(r'\[\[Image\(wiki:([^\s\[\]]+):([^\s\[\]]+)\)\]\]', r'![\2](/uploads/migrated/\2)', line)
-            line = re.sub(r'\[\[Image\(([^(]+)\)\]\]', r'![\1](/uploads/migrated/\1)', line)
+
+            line = image_re.sub(image_replace, line)
+
             line = re.sub(r'\'\'\'(.*?)\'\'\'', r'*\1*', line)
             line = re.sub(r'\'\'(.*?)\'\'', r'_\1_', line)
             if line.startswith('||'):
