@@ -143,12 +143,6 @@ def ticket_type(ticket):
     ttype = ticket['attributes']['type']
     return {'type:{}'.format(ttype.strip())}
 
-def gitlab_status_label(status, status_to_state=None):
-    status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
-    if status in status_to_state:
-        return status_to_state[status]
-    else:
-        raise Exception('No label for "%s" status' % status)
 
 def gitlab_status_label(status, status_to_state=None):
     status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
