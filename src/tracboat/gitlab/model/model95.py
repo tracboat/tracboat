@@ -1,13 +1,15 @@
+# -*- coding: utf-8 -*-
+
 from peewee import *
 
-database = PostgresqlDatabase('gitlabhq_production', **{'user': 'gitlab'})
+database_proxy = Proxy()
 
 class UnknownField(object):
-    def __init__(self, *_, **__): pass
+    pass
 
 class BaseModel(Model):
     class Meta:
-        database = database
+        database = database_proxy
 
 class AbuseReports(BaseModel):
     cached_markdown_version = IntegerField(null=True)
