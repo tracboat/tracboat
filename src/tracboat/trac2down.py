@@ -16,11 +16,12 @@ import datetime
 import re
 import os
 import codecs
+from pprint import pprint
 
 import six
 
 
-def convert(text, base_path, multilines=True):
+def convert(text, base_path, multilines=True, note_map={}):
     text = re.sub('\r\n', '\n', text)
     text = re.sub(r'{{{(.*?)}}}', r'`\1`', text)
     text = re.sub(r'(?sm){{{(\n?#![^\n]+)?\n(.*?)\n}}}', r'```\n\2\n```', text)
@@ -51,8 +52,11 @@ def convert(text, base_path, multilines=True):
         """
 
         d = m.groupdict()
-        # NOTE: the comment_id is bogus, should be fixed manually after import
-        d['link'] = '#note_%s' % d['comment_id']
+        # fallback to original id, can be fixed manually after import
+        pprint(note_map)
+#        note_id = note_map.get(d['comment_id'], d['comment_id'])
+        note_id = note_map.get(d['comment_id'])
+        d['link'] = '#note_%s' % note_id
 
         return "Replying to [%(username)s](%(link)s):" % d
 

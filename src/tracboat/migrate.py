@@ -65,8 +65,8 @@ def _wikifix(text):
     return text
 
 
-def _wikiconvert(text, basepath, multiline=True):
-    return trac2down.convert(_wikifix(text), basepath, multiline)
+def _wikiconvert(text, basepath, multiline=True, note_map={}):
+    return trac2down.convert(_wikifix(text), basepath, multiline, note_map=note_map)
 
 
 ################################################################################
@@ -176,9 +176,9 @@ def ticket_state(ticket, status_to_state=None):
 #  dbmodel.Milestone(**milestone_kwargs(trac_milestone))
 ################################################################################
 
-def change_kwargs(change):
+def change_kwargs(change, note_map = {}):
     if change['field'] == 'comment':
-        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False)
+        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map)
     elif change['field'] == 'resolution':
         if change['newvalue'] == '':
             resolution = gitlab_resolution_label(change['oldvalue'])
@@ -264,6 +264,10 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
 
     for ticket_id, ticket in six.iteritems(trac_tickets):
         LOG.info('migrate #%d: %r', ticket_id, ticket)
+        # trac note_id -> gitlab note_id
+        note_map = {}
+        trac_note_id = 1
+
         issue_args = ticket_kwargs(ticket)
         # Fix user mapping
         issue_args['author'] = usermap.get(issue_args['author'], default_user)
@@ -292,11 +296,14 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 # TODO changelog binary attachments
                 gitlab_note_id = gitlab.comment_issue( issue_id=gitlab_issue_id, binary_attachment=None, **note_args)
                 LOG.info('migrated ticket #%s note: %r', ticket_id, gitlab_note_id)
+
+                if change['field'] == 'comment':
+                    note_map[trac_note_id] = gitlab_note_id
+                    trac_note_id += 1
             else:
                 # TODO: skip field: description
                 LOG.info('skip field: %s', change['field'])
-                from pprint import pprint
-                pprint(change)
+                #pprint(change)
 
 def migrate_milestones(trac_milestones, gitlab):
     LOG.info('migrating %d milestones', len(trac_milestones))
