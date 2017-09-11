@@ -280,7 +280,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         LOG.info('changelog: %r', ticket['changelog'])
         for change in sort_changelog(ticket['changelog']):
             if change['field'] in ['comment', 'resolution', 'status']:
-                note_args = change_kwargs(change)
+                note_args = change_kwargs(change, note_map=note_map)
                 if note_args['note'] == '':
                     LOG.info('skip empty comment: %r; change: %r', note_args, change)
                     continue
@@ -293,11 +293,11 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
 
                 if change['field'] == 'comment':
                     note_map[trac_note_id] = gitlab_note_id
+                    pprint(['NOTE_MAP[#%s] %s -> %s' % (gitlab_issue_id, trac_note_id, gitlab_note_id), note_map])
                     trac_note_id += 1
             else:
                 # TODO: skip field: description
                 LOG.info('skip field: %s', change['field'])
-                #pprint(change)
 
 def migrate_milestones(trac_milestones, gitlab):
     LOG.info('migrating %d milestones', len(trac_milestones))

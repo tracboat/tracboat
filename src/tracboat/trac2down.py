@@ -53,9 +53,9 @@ def convert(text, base_path, multilines=True, note_map={}):
 
         d = m.groupdict()
         # fallback to original id, can be fixed manually after import
-        pprint(note_map)
-#        note_id = note_map.get(d['comment_id'], d['comment_id'])
-        note_id = note_map.get(d['comment_id'])
+        pprint(['WIKI_NOTE_MAP for %s' % d['comment_id'], note_map])
+        comment_id = int(d['comment_id'])
+        note_id = note_map.get(comment_id, comment_id)
         d['link'] = '#note_%s' % note_id
 
         return "Replying to [%(username)s](%(link)s):" % d
