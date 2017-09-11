@@ -100,17 +100,29 @@ def ticket_resolution(ticket, resolution_to_label=None):
         return set()
 
 
-def ticket_version(ticket):
+def version_label(version):
+    return 'version:{}'.format(version)
+
+def ticket_versions(ticket):
+    labels = set()
+
     try:
-        version = ticket['attributes']['version']
+        labels.add(version_label(ticket['attributes']['version']))
     except KeyError:
-        return set()
+        pass
 
-    if version:
-        return {'version:{}'.format(version)}
-    else:
-        return set()
+    def add_version(labels, version):
+        if version == '':
+            return
+        labels.add(version_label(version))
 
+    # get versions from changelog
+    for change in ticket['changelog']:
+        if change['field'] == 'version':
+            add_version(labels, change['oldvalue'])
+            add_version(labels, change['newvalue'])
+
+    return labels
 
 def ticket_components(ticket):
     components = ticket['attributes']['component'].split(',')
@@ -222,7 +234,7 @@ def change_kwargs(change, note_map = {}):
 def ticket_kwargs(ticket):
     priority_labels = ticket_priority(ticket)
     resolution_labels = ticket_resolution(ticket)
-    version_labels = ticket_version(ticket)
+    version_labels = ticket_versions(ticket)
     component_labels = ticket_components(ticket)
     type_labels = ticket_type(ticket)
     state, state_labels = ticket_state(ticket)
