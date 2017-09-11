@@ -96,5 +96,5 @@ class ConnectionBase(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def save_wiki_attachment(self, outpath, binary):
+    def save_attachment(self, outpath, binary):
         raise NotImplementedError()

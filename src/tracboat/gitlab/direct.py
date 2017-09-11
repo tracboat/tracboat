@@ -3,7 +3,6 @@
 import os
 import shutil
 import logging
-import codecs
 from datetime import datetime
 
 from . import ConnectionBase
@@ -148,6 +147,10 @@ class Connection(ConnectionBase):
                                     (M.Events.target_type == 'Issue') &
                                     (M.Events.target == issue.id)).execute()
             issue.delete_instance()
+
+        # attachments from note comments and wiki
+        directory = os.path.join(self.uploads_path, 'migrated')
+        shutil.rmtree(directory, ignore_errors=True)
 
         # XXX: method is called "Clear issues" but clears milestones?!?!
         M.Milestones.delete().where(
@@ -309,12 +312,12 @@ class Connection(ConnectionBase):
                 bin_f.write(binary_attachment)
         return note.id
 
-    def save_wiki_attachment(self, path, binary):
+    def save_attachment(self, path, binary):
         filename = os.path.join(self.uploads_path, self.project_qualname, path)
         if os.path.isfile(filename):
             raise Exception("file already exists: %r" % filename)
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        with codecs.open(filename, "wb", encoding='utf-8') as out_f:
-            out_f.write(binary)
+        with open(filename, "wb") as bin_f:
+            bin_f.write(binary)

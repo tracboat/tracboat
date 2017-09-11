@@ -349,6 +349,12 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         gitlab_issue_id = gitlab.create_issue(**issue_args)
         LOG.info('migrated ticket %s -> %s', ticket_id, gitlab_issue_id)
 
+        # migrate attachments from comments
+        for filename, attachment in six.iteritems(ticket['attachments']):
+            attrs = attachment['attributes']
+            LOG.info('saving attachment: %s (%d bytes) author: %s, description: %s' % (filename, attrs['size'], attrs['author'], attrs['description']))
+            gitlab.save_attachment('migrated/%s' % filename, attachment['data'])
+
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
         for change in merge_changelog(ticket['changelog']):
@@ -400,7 +406,7 @@ def migrate_wiki(trac_wiki, gitlab, output_dir):
         orphaned = []
         for filename, data in six.iteritems(attachments):
             name = filename.split('/')[-1]
-            gitlab.save_wiki_attachment(name, data)
+            gitlab.save_attachment(name, data)
             converted_page = \
                 converted_page.replace(r'migrated/%s)' % filename,
                                        r'migrated/%s)' % name)
