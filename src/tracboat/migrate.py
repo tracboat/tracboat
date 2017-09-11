@@ -21,9 +21,9 @@ LOG = logging.getLogger(__name__)
 #logging.basicConfig(filename='comment.log', filemode='w', level=logging.INFO)
 
 TICKET_PRIORITY_TO_ISSUE_LABEL = {
-    'high': 'prio:high',
+    'high': 'priority:high',
     # 'medium': None,
-    'low': 'prio:low',
+    'low': 'priority:low',
 }
 
 TICKET_RESOLUTION_TO_ISSUE_LABEL = {
@@ -107,7 +107,7 @@ def ticket_version(ticket):
         return set()
 
     if version:
-        return {'ver:{}'.format(version)}
+        return {'version:{}'.format(version)}
     else:
         return set()
 
@@ -180,6 +180,23 @@ def change_kwargs(change, note_map = {}):
         else:
             resolution = gitlab_resolution_label(change['newvalue'])
             note = '- **Resolution** set to ~"%s"' % resolution
+    elif change['field'] == 'milestone':
+        if change['newvalue'] == '':
+            note = '- **Milestone** %%"%s" deleted' % change['oldvalue']
+        else:
+            note = '- **Milestone** set to %%"%s"' % change['newvalue']
+    elif change['field'] == 'version':
+        if change['newvalue'] == '':
+            note = '- **Version** ~"version:%s" deleted' % change['oldvalue']
+        else:
+            note = '- **Version** set to ~"version:%s"' % change['newvalue']
+    elif change['field'] == 'description':
+        if change['oldvalue'] == '':
+            note = '- **Description** changed to "**%s**"' % change['newvalue']
+        else:
+            note = '- **Description** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
+    elif change['field'] == 'attachment':
+        note = '- **Attachment** [%s](%s) added' % (change['newvalue'], change['newvalue'])
     elif change['field'] == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
@@ -272,8 +289,7 @@ def merge_changelog(changelog):
 
     for change in sort_changelog(changelog):
         last_change = change
-        # TODO: milestone, version, description, attachment
-        if change['field'] in ['resolution', 'status']:
+        if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment']:
             # just collect 'note', the rest is same anyway
             note_args = change_kwargs(change)
             if note_args['note'] == '':
@@ -287,6 +303,9 @@ def merge_changelog(changelog):
             # field type comment flushes
             yield insert_notes(change, notes)
             notes = []
+            continue
+
+        LOG.info('changelog: skip field: %s', change['field'])
 
     # last non-comments may need to be flushed as well
     if len(notes):
