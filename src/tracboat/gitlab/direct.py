@@ -149,7 +149,8 @@ class Connection(ConnectionBase):
             issue.delete_instance()
 
         # attachments from note comments and wiki
-        directory = os.path.join(self.uploads_path, 'migrated')
+        directory = os.path.join(self.uploads_path, self.project_qualname, 'migrated')
+        LOG.info("rm -rf %r" % directory)
         shutil.rmtree(directory, ignore_errors=True)
 
         # XXX: method is called "Clear issues" but clears milestones?!?!

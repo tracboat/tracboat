@@ -182,7 +182,7 @@ def ticket_state(ticket, status_to_state=None):
 #  dbmodel.Milestone(**milestone_kwargs(trac_milestone))
 ################################################################################
 
-def change_kwargs(change, note_map = {}):
+def change_kwargs(change, ticket_id=None, note_map={}):
     if change['field'] == 'comment':
         note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map)
     elif change['field'] == 'resolution':
@@ -211,7 +211,7 @@ def change_kwargs(change, note_map = {}):
         # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
         # will be saved  relative to the project:
         # /var/opt/gitlab/gitlab-rails/uploads/glen/photoproject/f38feb8a3dc4c5bcabdc41ccc5894ac3
-        note = '- **Attachment** [%s](/uploads/migrated/%s) added' % (change['newvalue'], change['newvalue'])
+        note = '- **Attachment** [%s](/uploads/migrated/%s/%s) added' % (change['newvalue'], ticket_id, change['newvalue'])
     elif change['field'] == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
@@ -285,7 +285,7 @@ def sort_changelog(changelog):
     # so sort by date and then items by field being comment
     return sorted(changelog, key = lambda obj: (obj['time'], 1 if obj['field'] == 'comment' else -1, obj['time']))
 
-def merge_changelog(changelog):
+def merge_changelog(ticket_id, changelog):
     """
     Merge changes of type 'resolution' and 'status' into 'comment', because this is how Trac displays changes.
 
@@ -306,7 +306,7 @@ def merge_changelog(changelog):
         last_change = change
         if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment']:
             # just collect 'note', the rest is same anyway
-            note_args = change_kwargs(change)
+            note_args = change_kwargs(change, ticket_id=ticket_id)
             if note_args['note'] == '':
                 LOG.info('skip empty comment: %r; change: %r', note_args, change)
                 continue
@@ -353,11 +353,11 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         for filename, attachment in six.iteritems(ticket['attachments']):
             attrs = attachment['attributes']
             LOG.info('saving attachment: %s (%d bytes) author: %s, description: %s' % (filename, attrs['size'], attrs['author'], attrs['description']))
-            gitlab.save_attachment('migrated/%s' % filename, attachment['data'])
+            gitlab.save_attachment('migrated/%s/%s' % (ticket_id, filename), attachment['data'])
 
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
-        for change in merge_changelog(ticket['changelog']):
+        for change in merge_changelog(ticket_id, ticket['changelog']):
             if change['field'] in ['comment', 'resolution', 'status']:
                 note_args = change_kwargs(change, note_map=note_map)
                 if note_args['note'] == '':
