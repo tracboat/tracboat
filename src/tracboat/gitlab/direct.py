@@ -226,6 +226,12 @@ class Connection(ConnectionBase):
             LOG.info("MILESTONE created: %r" % milestone)
         return milestone.id
 
+    def close_milestone(self, milestone_id):
+        M = self.model
+        milestone = M.Milestones.get(M.Milestones.id == milestone_id)
+        milestone.state = 'closed'
+        milestone.save()
+
     def create_issue(self, **kwargs):
         M = self.model
         # 1. Issue

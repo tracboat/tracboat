@@ -84,6 +84,10 @@ class ConnectionBase(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
+    def close_milestone(self, milestone_id):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
     def create_issue(self, **kwargs):
         raise NotImplementedError()
 

@@ -195,6 +195,8 @@ def change_kwargs(change, ticket_id=None, note_map={}):
     elif change['field'] == 'milestone':
         if change['newvalue'] == '':
             note = '- **Milestone** %%"%s" deleted' % change['oldvalue']
+        elif change['oldvalue'] != '':
+            note = '- **Milestone** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
         else:
             note = '- **Milestone** set to %%"%s"' % change['newvalue']
     elif change['field'] == 'version':
@@ -265,7 +267,9 @@ def milestone_kwargs(milestone):
     return {
         'description': _wikiconvert(milestone['description'], '/milestones/', multiline=False),
         'title': milestone['name'],
-        'state': 'closed' if milestone['completed'] else 'active',
+        # keep open, close later, to handle milestones being referred from comments
+#        'state': 'closed' if milestone['completed'] else 'active',
+        'state': 'active',
         'due_date': milestone['due'] if milestone['due'] else None,
         # References:
         # 'project': None,
@@ -378,6 +382,15 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 # TODO: skip field: description
                 LOG.info('skip field: %s', change['field'])
 
+# for ticket comments to appear normally, we created all milestones as 'active'
+# now close the milestones that are 'closed'
+def close_milestones(trac_milestones, gitlab):
+    closed_milestones = [milestone for milestone in six.itervalues(trac_milestones) if milestone['completed']]
+    LOG.info('closing %d milestones', len(closed_milestones))
+    for milestone in closed_milestones:
+        milestone_id = gitlab.get_milestone_id(milestone['name'])
+        gitlab.close_milestone(milestone_id)
+
 def migrate_milestones(trac_milestones, gitlab):
     LOG.info('migrating %d milestones', len(trac_milestones))
     for title, milestone in six.iteritems(trac_milestones):
@@ -474,5 +487,6 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     migrate_milestones(trac['milestones'], gitlab)
     # 3. Issues
     migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap)
+    #close_milestones(trac['milestones'], gitlab) - gitlab bug?
     # Farewell
     LOG.info('done migration of project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)
