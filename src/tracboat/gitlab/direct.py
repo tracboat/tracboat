@@ -3,6 +3,7 @@
 import os
 import shutil
 import logging
+import glob
 from datetime import datetime
 
 from . import ConnectionBase
@@ -148,10 +149,10 @@ class Connection(ConnectionBase):
                                     (M.Events.target == issue.id)).execute()
             issue.delete_instance()
 
-        # attachments from note comments and wiki
-        directory = os.path.join(self.uploads_path, self.project_qualname, 'migrated')
-        LOG.info("rm -rf %r" % directory)
-        shutil.rmtree(directory, ignore_errors=True)
+        # attachments from issue comments
+        for directory in glob.glob(os.path.join(self.uploads_path, self.project_qualname, 'issue_*')):
+            LOG.info("rm -rf %r" % directory)
+            shutil.rmtree(directory, ignore_errors=True)
 
         # XXX: method is called "Clear issues" but clears milestones?!?!
         M.Milestones.delete().where(

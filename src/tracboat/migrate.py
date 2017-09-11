@@ -211,7 +211,7 @@ def change_kwargs(change, ticket_id=None, note_map={}):
         # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
         # will be saved  relative to the project:
         # /var/opt/gitlab/gitlab-rails/uploads/glen/photoproject/f38feb8a3dc4c5bcabdc41ccc5894ac3
-        note = '- **Attachment** [%s](/uploads/migrated/%s/%s) added' % (change['newvalue'], ticket_id, change['newvalue'])
+        note = '- **Attachment** [%s](/uploads/issue_%s/%s) added' % (change['newvalue'], ticket_id, change['newvalue'])
     elif change['field'] == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
@@ -353,7 +353,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         for filename, attachment in six.iteritems(ticket['attachments']):
             attrs = attachment['attributes']
             LOG.info('saving attachment: %s (%d bytes) author: %s, description: %s' % (filename, attrs['size'], attrs['author'], attrs['description']))
-            gitlab.save_attachment('migrated/%s/%s' % (ticket_id, filename), attachment['data'])
+            gitlab.save_attachment('issue_%s/%s' % (ticket_id, filename), attachment['data'])
 
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
