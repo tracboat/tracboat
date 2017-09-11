@@ -196,7 +196,10 @@ def change_kwargs(change, note_map = {}):
         else:
             note = '- **Description** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
     elif change['field'] == 'attachment':
-        note = '- **Attachment** [%s](%s) added' % (change['newvalue'], change['newvalue'])
+        # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
+        # will be saved  relative to the project:
+        # /var/opt/gitlab/gitlab-rails/uploads/glen/photoproject/f38feb8a3dc4c5bcabdc41ccc5894ac3
+        note = '- **Attachment** [%s](/uploads/migrated/%s) added' % (change['newvalue'], change['newvalue'])
     elif change['field'] == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
