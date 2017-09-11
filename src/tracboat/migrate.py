@@ -176,14 +176,14 @@ def change_kwargs(change, note_map = {}):
     elif change['field'] == 'resolution':
         if change['newvalue'] == '':
             resolution = gitlab_resolution_label(change['oldvalue'])
-            note = '**Resolution** ~"%s" deleted' % resolution
+            note = '- **Resolution** ~"%s" deleted' % resolution
         else:
             resolution = gitlab_resolution_label(change['newvalue'])
-            note = '**Resolution** set to ~"%s"' % resolution
+            note = '- **Resolution** set to ~"%s"' % resolution
     elif change['field'] == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
-        note = "**Status** changed from *%s* to *%s*" % (oldstatus, newstatus)
+        note = "- **Status** changed from *%s* to *%s*" % (oldstatus, newstatus)
     else:
         raise Exception('Unexpected field %s' % change['field'])
 
@@ -253,6 +253,45 @@ def sort_changelog(changelog):
     # so sort by date and then items by field being comment
     return sorted(changelog, key = lambda obj: (obj['time'], 1 if obj['field'] == 'comment' else -1, obj['time']))
 
+def merge_changelog(changelog):
+    """
+    Merge changes of type 'resolution' and 'status' into 'comment', because this is how Trac displays changes.
+
+    Basically each 'comment' starts new post, otherwise grouped to same item.
+    """
+
+    notes = []
+    last_change = None
+
+    def insert_notes(change, notes):
+        # first merge notes into
+        if len(notes):
+            # prepend existing notes
+            change['newvalue'] = "\n".join(notes) + "\n\n" + change['newvalue']
+        return change
+
+    for change in sort_changelog(changelog):
+        last_change = change
+        # TODO: milestone, version, description, attachment
+        if change['field'] in ['resolution', 'status']:
+            # just collect 'note', the rest is same anyway
+            note_args = change_kwargs(change)
+            if note_args['note'] == '':
+                LOG.info('skip empty comment: %r; change: %r', note_args, change)
+                continue
+            notes.append(note_args['note'])
+            continue
+
+        if change['field'] == 'comment':
+            # comment flushes
+            # field type comment flushes
+            yield insert_notes(change, notes)
+            notes = []
+
+    # last non-comments may need to be flushed as well
+    if len(notes):
+        yield insert_notes(last_change, notes)
+
 def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
 
@@ -278,7 +317,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
 
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
-        for change in sort_changelog(ticket['changelog']):
+        for change in merge_changelog(ticket['changelog']):
             if change['field'] in ['comment', 'resolution', 'status']:
                 note_args = change_kwargs(change, note_map=note_map)
                 if note_args['note'] == '':
