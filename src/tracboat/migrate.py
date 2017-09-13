@@ -5,6 +5,7 @@ import os
 import random
 import re
 import string
+import difflib
 from itertools import chain
 from sys import exit
 from pprint import pprint
@@ -174,6 +175,23 @@ def ticket_state(ticket, status_to_state=None):
         return None, {'state:{}'.format(state)}
 
 
+# https://stackoverflow.com/a/21790513
+# https://stackoverflow.com/a/22043027
+def render_text_diff(text1, text2):
+    diff = difflib.ndiff(text1.splitlines(), text2.splitlines())
+    return "```diff\n%s\n```\n" % "\n".join(diff)
+
+# https://gitlab.com/gitlab-org/gitlab-ce/commit/00688e438c04e622a8afb96904b8724f8818f6ce#note_40208591
+def render_html5_details(text, summary="Summary"):
+    return """
+<details>
+<summary>%s</summary>
+<pre>
+%s
+</pre>
+</details>
+""" % (summary, text)
+
 ################################################################################
 # Trac dict -> GitLab dict conversion
 # The GitLab dict is a GitLab model-friendly representation, the GitLab dict
@@ -206,9 +224,10 @@ def change_kwargs(change, ticket_id=None, note_map={}):
             note = '- **Version** set to ~"version:%s"' % change['newvalue']
     elif change['field'] == 'description':
         if change['oldvalue'] == '':
-            note = '- **Description** changed to "**%s**"' % change['newvalue']
+            # XXX: does this happen or we need only 'diff' render?
+            note = '- **Description** changed\n\n%s' % render_html5_details(change['newvalue'])
         else:
-            note = '- **Description** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
+            note = '- **Description** changed\n\n%s' % render_text_diff(change['oldvalue'], change['newvalue'])
     elif change['field'] == 'attachment':
         # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
         # will be saved  relative to the project:
