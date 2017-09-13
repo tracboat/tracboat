@@ -214,9 +214,16 @@ def change_kwargs(change, ticket_id=None, note_map={}):
         if change['newvalue'] == '':
             note = '- **Milestone** %%"%s" deleted' % change['oldvalue']
         elif change['oldvalue'] != '':
-            note = '- **Milestone** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
+            note = '- **Milestone** changed from %%"**%s**" to %%"**%s**"' % (change['oldvalue'], change['newvalue'])
         else:
             note = '- **Milestone** set to %%"%s"' % change['newvalue']
+    elif change['field'] == 'estimatedhours':
+        if change['newvalue'] == '':
+            note = '- **Estimated Hours** "%s" deleted' % change['oldvalue']
+        elif change['oldvalue'] != '':
+            note = '- **Estimated Hours** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
+        else:
+            note = '- **Estimated Hours** set to "%s"' % change['newvalue']
     elif change['field'] == 'version':
         if change['newvalue'] == '':
             note = '- **Version** ~"version:%s" deleted' % change['oldvalue']
@@ -228,11 +235,30 @@ def change_kwargs(change, ticket_id=None, note_map={}):
             note = '- **Description** changed\n\n%s' % render_html5_details(change['newvalue'])
         else:
             note = '- **Description** changed\n\n%s' % render_text_diff(change['oldvalue'], change['newvalue'])
+    elif change['field'] == 'summary':
+        if change['oldvalue'] == '':
+            # XXX: does this happen or we need only 'diff' render?
+            note = '- **Summary** changed to "**%s**"' % change['newvalue']
+        else:
+            note = '- **Summary** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
     elif change['field'] == 'attachment':
         # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
         # will be saved  relative to the project:
         # /var/opt/gitlab/gitlab-rails/uploads/glen/photoproject/f38feb8a3dc4c5bcabdc41ccc5894ac3
         note = '- **Attachment** [%s](/uploads/issue_%s/%s) added' % (change['newvalue'], ticket_id, change['newvalue'])
+    elif change['field'] == 'cc':
+        if change['newvalue'] == '':
+            raise Exception('Unexpected empty value for %s' % change['field'])
+
+        note = '- **Cc** added @%s' % change['newvalue']
+    elif change['field'] == 'owner':
+        if change['oldvalue'] == '' and change['newvalue'] == '':
+            # XXX no idea why such changes even exist
+            note = ''
+        elif change['newvalue'] == '':
+            raise Exception('Unexpected empty value for %s' % change['field'])
+
+        note = '- **Owner** set to @%s' % change['newvalue']
     elif change['field'] == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
@@ -249,8 +275,6 @@ def change_kwargs(change, ticket_id=None, note_map={}):
         'updated_by': change['author'],
         # 'project'
     }
-
-
 
 def ticket_kwargs(ticket):
     priority_labels = ticket_priority(ticket)
@@ -327,7 +351,7 @@ def merge_changelog(ticket_id, changelog):
 
     for change in sort_changelog(changelog):
         last_change = change
-        if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment']:
+        if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment', 'cc', 'summary', 'owner', 'estimatedhours']:
             # just collect 'note', the rest is same anyway
             note_args = change_kwargs(change, ticket_id=ticket_id)
             if note_args['note'] == '':
@@ -381,7 +405,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
         for change in merge_changelog(ticket_id, ticket['changelog']):
-            if change['field'] in ['comment', 'resolution', 'status']:
+            if change['field'] == 'comment':
                 note_args = change_kwargs(change, note_map=note_map)
                 if note_args['note'] == '':
                     LOG.info('skip empty comment: %r; change: %r', note_args, change)
@@ -399,6 +423,11 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                     trac_note_id += 1
             else:
                 # TODO: skip field: description
+                # skip field: _comment0
+                # skip field: component
+                # skip field: parents
+                # skip field: priority
+                # skip field: type
                 LOG.info('skip field: %s', change['field'])
 
 # for ticket comments to appear normally, we created all milestones as 'active'
