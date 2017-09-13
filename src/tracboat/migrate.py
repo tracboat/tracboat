@@ -23,7 +23,10 @@ LOG = logging.getLogger(__name__)
 
 TICKET_PRIORITY_TO_ISSUE_LABEL = {
     'high': 'priority:high',
+    'minor': 'priority:minor',
+    'critical': 'priority:critical',
     # 'medium': None,
+    'major': 'priority:major',
     'low': 'priority:low',
 }
 
@@ -74,6 +77,14 @@ def _wikiconvert(text, basepath, multiline=True, note_map={}):
 # Trac ticket metadata conversion
 ################################################################################
 
+def gitlab_priority_label(priority, priority_to_label=None):
+    priority_to_label = priority_to_label or TICKET_PRIORITY_TO_ISSUE_LABEL
+    if priority in priority_to_label:
+        return priority_to_label[priority]
+    else:
+        # todo find a meaningful default value for unknown resolutions
+        raise ValueError('no label for {} priority'.format(priority))
+
 def ticket_priority(ticket, priority_to_label=None):
     priority_to_label = priority_to_label or TICKET_PRIORITY_TO_ISSUE_LABEL
     priority = ticket['attributes']['priority']
@@ -89,7 +100,6 @@ def gitlab_resolution_label(resolution, resolution_to_label=None):
     else:
         # todo find a meaningful default value for unknown resolutions
         raise ValueError('no label for {} resolution'.format(resolution))
-
 
 def ticket_resolution(ticket, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
@@ -210,6 +220,17 @@ def change_kwargs(change, ticket_id=None, note_map={}):
         else:
             resolution = gitlab_resolution_label(change['newvalue'])
             note = '- **Resolution** set to ~"%s"' % resolution
+    elif change['field'] == 'priority':
+        if change['newvalue'] == '':
+            label = gitlab_priority_label(change['oldvalue'])
+            note = '- **Priority** ~"%s" deleted' % label
+        elif change['oldvalue'] != '':
+            oldvalue = gitlab_priority_label(change['oldvalue'])
+            newvalue = gitlab_priority_label(change['newvalue'])
+            note = '- **Priority** changed from ~"**%s**" to ~"**%s**"' % (oldvalue, newvalue)
+        else:
+            label = gitlab_priority_label(change['newvalue'])
+            note = '- **Priority** set to ~"%s"' % label
     elif change['field'] == 'milestone':
         if change['newvalue'] == '':
             note = '- **Milestone** %%"%s" deleted' % change['oldvalue']
@@ -351,7 +372,7 @@ def merge_changelog(ticket_id, changelog):
 
     for change in sort_changelog(changelog):
         last_change = change
-        if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment', 'cc', 'summary', 'owner', 'estimatedhours']:
+        if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment', 'cc', 'summary', 'owner', 'estimatedhours', 'priority']:
             # just collect 'note', the rest is same anyway
             note_args = change_kwargs(change, ticket_id=ticket_id)
             if note_args['note'] == '':
@@ -426,7 +447,6 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
                 # skip field: _comment0
                 # skip field: component
                 # skip field: parents
-                # skip field: priority
                 # skip field: type
                 LOG.info('skip field: %s', change['field'])
 
