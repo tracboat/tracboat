@@ -235,7 +235,7 @@ def change_kwargs(change, ticket_id=None, note_map={}):
         if change['newvalue'] == '':
             note = '- **Milestone** %%"%s" deleted' % change['oldvalue']
         elif change['oldvalue'] != '':
-            note = '- **Milestone** changed from %%"**%s**" to %%"**%s**"' % (change['oldvalue'], change['newvalue'])
+            note = '- **Milestone** changed from %%"%s" to %%"%s"' % (change['oldvalue'], change['newvalue'])
         else:
             note = '- **Milestone** set to %%"%s"' % change['newvalue']
     elif change['field'] == 'estimatedhours':
