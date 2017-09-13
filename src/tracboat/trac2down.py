@@ -105,6 +105,7 @@ def convert(text, base_path, multilines=True, note_map={}):
     a = []
     is_table = False
     for line in text.split('\n'):
+        # not blockquote?
         if not line.startswith('    '):
             line = re.sub(r'\[(https?://[^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](\1)', line)
             line = re.sub(r'\[wiki:([^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](%s/\1)' % os.path.relpath('/wikis/', base_path), line)
@@ -116,8 +117,11 @@ def convert(text, base_path, multilines=True, note_map={}):
             line = image_re.sub(image_replace, line)
             line = reply_re.sub(reply_replace, line)
 
-            line = re.sub(r'\'\'\'(.*?)\'\'\'', r'*\1*', line)
-            line = re.sub(r'\'\'(.*?)\'\'', r'_\1_', line)
+            # bold
+            line = re.sub(r"'''(.*?)'''", r'**\1**', line)
+            # italic
+            line = re.sub(r"''(.*?)''", r'_\1_', line)
+            # tables?
             if line.startswith('||'):
                 if not is_table:
                     sep = re.sub(r'[^|]', r'-', line)
