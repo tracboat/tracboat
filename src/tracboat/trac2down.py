@@ -45,18 +45,24 @@ def convert(text, base_path, multilines=True, note_map={}):
     text = re.sub(r'^ * ', r'*', text)
     text = re.sub(r'^ \d+. ', r'1.', text)
 
-    reply_re = re.compile(r'Replying to \[comment:(?P<comment_id>\d+)\s+(?P<username>[^]]+)\]:')
+    reply_re = re.compile(r'Replying to \[(?P<type>comment|ticket):(?P<id>\d+)\s+(?P<username>[^]]+)\]:')
     def reply_replace(m):
         """
         Replying to [comment:4 glen]:
+        Replying to [ticket:41 katlyn]:
         """
 
         d = m.groupdict()
-        # fallback to original id, can be fixed manually after import
-        pprint(['WIKI_NOTE_MAP for %s' % d['comment_id'], note_map])
-        comment_id = int(d['comment_id'])
-        note_id = note_map.get(comment_id, comment_id)
-        d['link'] = '#note_%s' % note_id
+        link_id = int(d['id'])
+        if d['type'] == 'comment':
+            # fallback to original id, can be fixed manually after import
+            note_id = note_map.get(link_id, link_id)
+            d['link'] = '#note_%d' % note_id
+            return "Replying to [%(username)s](%(link)s):" % d
+        elif d['type'] == 'ticket':
+            d['link'] = '#%d' % link_id
+        else:
+            raise Exception("Unsupported type: %s" % d['type'])
 
         return "Replying to [%(username)s](%(link)s):" % d
 
