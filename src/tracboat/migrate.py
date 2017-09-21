@@ -69,8 +69,8 @@ def _wikifix(text):
     return text
 
 
-def _wikiconvert(text, basepath, multiline=True, note_map={}, attachments_path=None):
-    return trac2down.convert(_wikifix(text), basepath, multiline, note_map=note_map, attachments_path=attachments_path)
+def _wikiconvert(text, basepath, multiline=True, note_map={}, attachments_path=None, svn2git_revisions={}):
+    return trac2down.convert(_wikifix(text), basepath, multiline, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
 
 
 ################################################################################
@@ -210,10 +210,10 @@ def render_html5_details(text, summary="Summary"):
 #  dbmodel.Milestone(**milestone_kwargs(trac_milestone))
 ################################################################################
 
-def change_kwargs(change, issue_id=None, note_map={}):
+def change_kwargs(change, issue_id=None, note_map={}, svn2git_revisions={}):
     attachments_path = '/uploads/issue_%s' % issue_id
     if change['field'] == 'comment':
-        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path)
+        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
     elif change['field'] == 'resolution':
         if change['newvalue'] == '':
             resolution = gitlab_resolution_label(change['oldvalue'])
@@ -395,7 +395,7 @@ def merge_changelog(ticket_id, changelog):
     if len(notes):
         yield insert_notes(last_change, notes)
 
-def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
+def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_revisions={}):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
 
     for ticket_id, ticket in six.iteritems(trac_tickets):
@@ -428,7 +428,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         LOG.info('changelog: %r', ticket['changelog'])
         for change in merge_changelog(ticket_id, ticket['changelog']):
             if change['field'] == 'comment':
-                note_args = change_kwargs(change, note_map=note_map, issue_id=ticket_id)
+                note_args = change_kwargs(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions)
                 if note_args['note'] == '':
                     LOG.info('skip empty comment: %r; change: %r', note_args, change)
                     continue
@@ -441,7 +441,6 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
 
                 if change['field'] == 'comment':
                     note_map[trac_note_id] = gitlab_note_id
-                    pprint(['NOTE_MAP[#%s] %s -> %s' % (gitlab_issue_id, trac_note_id, gitlab_note_id), note_map])
                     trac_note_id += 1
             else:
                 # TODO: skip field: description
@@ -532,7 +531,7 @@ def create_users(gitlab, usermap, userattrs, gitlab_fallback_user):
 # pylint: disable=too-many-arguments
 def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
             output_wiki_path, output_uploads_path, gitlab_fallback_user,
-            usermap=None, userattrs=None):
+            usermap=None, userattrs=None, svn2git_revisions={}):
     LOG.info('migrating project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)
     LOG.info('uploads repository path is: %r', output_uploads_path)
     db_model = model.get_model(gitlab_version)
@@ -555,7 +554,7 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     # 2. Milestones
     migrate_milestones(trac['milestones'], gitlab)
     # 3. Issues
-    migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap)
+    migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap, svn2git_revisions=svn2git_revisions)
     #close_milestones(trac['milestones'], gitlab) - gitlab bug?
     # Farewell
     LOG.info('done migration of project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)

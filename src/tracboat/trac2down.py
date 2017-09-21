@@ -8,6 +8,9 @@
 Copyright © 2013
     Eric van der Vlist <vdv@dyomedea.com>
     Shigeru KANEMOTO <support@switch-science.com>
+Copyright © 2017-2018
+    Elan Ruusamäe <glen@pld-linux.org>
+
 See license information at the bottom of this file
 '''
 
@@ -17,11 +20,12 @@ import re
 import os
 import codecs
 from pprint import pprint
+from sys import exit
 
 import six
 
 
-def convert(text, base_path, multilines=True, note_map={}, attachments_path=None):
+def convert(text, base_path, multilines=True, note_map={}, attachments_path=None, svn2git_revisions={}):
     text = re.sub('\r\n', '\n', text)
     text = re.sub(r'{{{(.*?)}}}', r'`\1`', text)
     text = re.sub(r'(?sm){{{(\n?#![^\n]+)?\n(.*?)\n}}}', r'```\n\2\n```', text)
@@ -93,6 +97,20 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
 
         return "Replying to [%(username)s](%(link)s):" % d
 
+    commit_re = re.compile(r"""
+        \(In\s\[(?P<revision>\d+)\]\)
+    """, re.X)
+    def commit_replace(m):
+        """
+        (In [35214])
+        """
+        d = m.groupdict()
+        revision = str(d['revision'])
+        d['git_hash'] = svn2git_revisions.get(revision, "[%s]" % d['revision'])
+        pprint("GIT MAP: (%s) r=%r; d=%r" % (type(svn2git_revisions), revision, d))
+
+        return "(In %(git_hash)s)" % d
+
     image_re = re.compile(r'\[\[Image\((?:(?P<module>(?:source|wiki)):)?(?P<path>[^)]+)\)\]\]')
     def image_replace(m):
         """
@@ -144,6 +162,7 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
             line = image_re.sub(image_replace, line)
             line = reply_re.sub(reply_replace, line)
             line = attachment_re.sub(attachment_replace, line)
+            line = commit_re.sub(commit_replace, line)
 
             # bold
             line = re.sub(r"'''(.*?)'''", r'**\1**', line)

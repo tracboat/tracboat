@@ -344,6 +344,7 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
     # Crawl files in increasing priority (the latter overrides)
     usermap = {}
     userattrs = {}
+    svn2git_revisions = {}
     for filename in ufiles:
         conf = toml.load(filename)
         if 'tracboat' in conf:
@@ -353,6 +354,9 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
             if 'users' in conf['tracboat']:
                 LOG.info('updating user attributes with info from %r', filename)
                 userattrs.update(conf['tracboat']['users'])
+            if 'svn2git_revisions' in conf['tracboat']:
+                import shelve
+                svn2git_revisions = shelve.open(conf['tracboat']['svn2git_revisions'], 'r')
     # Add extra mappings from command line '--umap' args
     usermap.update({m[0]: m[1] for m in umap if m and m[0] and m[1]})
     # Look for default user attributes
@@ -411,6 +415,7 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         gitlab_fallback_user=fallback_user,
         usermap=usermap,
         userattrs=userattrs,
+        svn2git_revisions=svn2git_revisions,
     )
     LOG.info('migration done.')
 
