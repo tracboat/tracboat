@@ -69,8 +69,8 @@ def _wikifix(text):
     return text
 
 
-def _wikiconvert(text, basepath, multiline=True, note_map={}):
-    return trac2down.convert(_wikifix(text), basepath, multiline, note_map=note_map)
+def _wikiconvert(text, basepath, multiline=True, note_map={}, attachments_path=None):
+    return trac2down.convert(_wikifix(text), basepath, multiline, note_map=note_map, attachments_path=attachments_path)
 
 
 ################################################################################
@@ -210,9 +210,10 @@ def render_html5_details(text, summary="Summary"):
 #  dbmodel.Milestone(**milestone_kwargs(trac_milestone))
 ################################################################################
 
-def change_kwargs(change, ticket_id=None, note_map={}):
+def change_kwargs(change, issue_id=None, note_map={}):
+    attachments_path = '/uploads/issue_%s' % issue_id
     if change['field'] == 'comment':
-        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map)
+        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path)
     elif change['field'] == 'resolution':
         if change['newvalue'] == '':
             resolution = gitlab_resolution_label(change['oldvalue'])
@@ -266,7 +267,7 @@ def change_kwargs(change, ticket_id=None, note_map={}):
         # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
         # will be saved  relative to the project:
         # /var/opt/gitlab/gitlab-rails/uploads/glen/photoproject/f38feb8a3dc4c5bcabdc41ccc5894ac3
-        note = '- **Attachment** [%s](/uploads/issue_%s/%s) added' % (change['newvalue'], ticket_id, change['newvalue'])
+        note = '- **Attachment** [%s](%s/%s) added' % (change['newvalue'], attachments_path, change['newvalue'])
     elif change['field'] == 'cc':
         if change['newvalue'] == '':
             raise Exception('Unexpected empty value for %s' % change['field'])
@@ -374,7 +375,7 @@ def merge_changelog(ticket_id, changelog):
         last_change = change
         if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment', 'cc', 'summary', 'owner', 'estimatedhours', 'priority']:
             # just collect 'note', the rest is same anyway
-            note_args = change_kwargs(change, ticket_id=ticket_id)
+            note_args = change_kwargs(change, issue_id=ticket_id)
             if note_args['note'] == '':
                 LOG.info('skip empty comment: %r; change: %r', note_args, change)
                 continue
@@ -427,7 +428,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None):
         LOG.info('changelog: %r', ticket['changelog'])
         for change in merge_changelog(ticket_id, ticket['changelog']):
             if change['field'] == 'comment':
-                note_args = change_kwargs(change, note_map=note_map)
+                note_args = change_kwargs(change, note_map=note_map, issue_id=ticket_id)
                 if note_args['note'] == '':
                     LOG.info('skip empty comment: %r; change: %r', note_args, change)
                     continue

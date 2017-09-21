@@ -21,7 +21,7 @@ from pprint import pprint
 import six
 
 
-def convert(text, base_path, multilines=True, note_map={}):
+def convert(text, base_path, multilines=True, note_map={}, attachments_path=None):
     text = re.sub('\r\n', '\n', text)
     text = re.sub(r'{{{(.*?)}}}', r'`\1`', text)
     text = re.sub(r'(?sm){{{(\n?#![^\n]+)?\n(.*?)\n}}}', r'```\n\2\n```', text)
@@ -44,6 +44,33 @@ def convert(text, base_path, multilines=True, note_map={}):
     text = re.sub(r'^     * ', r'**', text)
     text = re.sub(r'^ * ', r'*', text)
     text = re.sub(r'^ \d+. ', r'1.', text)
+
+    attachment_re = re.compile(r"""
+        \[\[attachment:
+            (?P<filename>.+?        # match filename
+                (:(?P<type>.+?)     # match optional type
+                    (:(?P<id>.+?))? # match optional id (optional with type)
+                )?
+            )
+        \]\]
+    """, re.X)
+    def attachment_replace(m):
+        """
+        @link https://trac.edgewall.org/wiki/TracLinks#attachment:links
+
+        The link syntax for attachments is as follows:
+
+            attachment:the_file.txt creates a link to the attachment the_file.txt of the current object
+            attachment:the_file.txt:wiki:MyPage creates a link to the attachment the_file.txt of the MyPage wiki page
+            attachment:the_file.txt:ticket:753 creates a link to the attachment the_file.txt of the ticket 753
+
+        see attachments: [[attachment:x.req]] and [[attachment:req.log]])
+        -> [req.log](/uploads/issue_142/req.log)
+
+        """
+        d = m.groupdict()
+        d['attachments_path'] = attachments_path
+        return "[%(filename)s](%(attachments_path)s/%(filename)s)" % d
 
     reply_re = re.compile(r'Replying to \[(?P<type>comment|ticket):(?P<id>\d+)\s+(?P<username>[^]]+)\]:')
     def reply_replace(m):
@@ -116,6 +143,7 @@ def convert(text, base_path, multilines=True, note_map={}):
 
             line = image_re.sub(image_replace, line)
             line = reply_re.sub(reply_replace, line)
+            line = attachment_re.sub(attachment_replace, line)
 
             # bold
             line = re.sub(r"'''(.*?)'''", r'**\1**', line)
