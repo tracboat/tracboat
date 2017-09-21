@@ -98,18 +98,19 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         return "Replying to [%(username)s](%(link)s):" % d
 
     commit_re = re.compile(r"""
-        \(In\s\[(?P<revision>\d+)\]\)
+        \[(?P<revision>\d+)\] |
+        r(?P<revision2>\d+)
     """, re.X)
     def commit_replace(m):
         """
         (In [35214])
         """
         d = m.groupdict()
-        revision = str(d['revision'])
-        d['git_hash'] = svn2git_revisions.get(revision, "[%s]" % d['revision'])
-        pprint("GIT MAP: (%s) r=%r; d=%r" % (type(svn2git_revisions), revision, d))
+        d[0] = str(m.group(0))
+        revision = str(d.get('revision', d.get('revision2')))
+        d['git_hash'] = svn2git_revisions.get(revision, d[0])
 
-        return "(In %(git_hash)s)" % d
+        return "%(git_hash)s" % d
 
     image_re = re.compile(r'\[\[Image\((?:(?P<module>(?:source|wiki)):)?(?P<path>[^)]+)\)\]\]')
     def image_replace(m):
