@@ -210,6 +210,37 @@ def render_html5_details(text, summary="Summary"):
 #  dbmodel.Milestone(**milestone_kwargs(trac_milestone))
 ################################################################################
 
+def identity_converter(value):
+    return value
+
+def format_label(value):
+    return '~"%s"' % value
+
+def format_emphasis(value):
+    return '*%s*' % value
+
+def format_milestone(value):
+    return '%%"%s"' % value
+
+def format_fieldchange(field_name, change, value_converter=identity_converter, format_converter=format_emphasis):
+    change['field_name'] = field_name
+
+    def converter(value):
+        return format_converter(value_converter(value))
+
+    if change['newvalue'] == '':
+        change['oldvalue'] = converter(change['oldvalue'])
+        note = '- **%(field_name)s** %(oldvalue)s deleted' % change
+    elif change['oldvalue'] != '':
+        change['oldvalue'] = converter(change['oldvalue'])
+        change['newvalue'] = converter(change['newvalue'])
+        note = '- **%(field_name)s** changed from %(oldvalue)s to %(newvalue)s' % change
+    else:
+        change['newvalue'] = converter(change['newvalue'])
+        note = '- **%(field_name)s** set to %(newvalue)s' % change
+
+    return note
+
 def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={}):
     """
     format "note" for change
@@ -220,56 +251,28 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={})
 
     if field == 'comment':
         note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
-
     elif field == 'resolution':
-        if change['newvalue'] == '':
-            resolution = gitlab_resolution_label(change['oldvalue'])
-            note = '- **Resolution** ~"%s" deleted' % resolution
-        else:
-            resolution = gitlab_resolution_label(change['newvalue'])
-            note = '- **Resolution** set to ~"%s"' % resolution
+        note = format_fieldchange('Resolution', change, value_converter=gitlab_resolution_label, format_converter=format_label)
     elif field == 'priority':
-        if change['newvalue'] == '':
-            label = gitlab_priority_label(change['oldvalue'])
-            note = '- **Priority** ~"%s" deleted' % label
-        elif change['oldvalue'] != '':
-            oldvalue = gitlab_priority_label(change['oldvalue'])
-            newvalue = gitlab_priority_label(change['newvalue'])
-            note = '- **Priority** changed from ~"%s" to ~"%s"' % (oldvalue, newvalue)
-        else:
-            label = gitlab_priority_label(change['newvalue'])
-            note = '- **Priority** set to ~"%s"' % label
+        note = format_fieldchange('Priority', change, value_converter=gitlab_priority_label, format_converter=format_label)
     elif field == 'milestone':
-        if change['newvalue'] == '':
-            note = '- **Milestone** %%"%s" deleted' % change['oldvalue']
-        elif change['oldvalue'] != '':
-            note = '- **Milestone** changed from %%"%s" to %%"%s"' % (change['oldvalue'], change['newvalue'])
-        else:
-            note = '- **Milestone** set to %%"%s"' % change['newvalue']
+        note = format_fieldchange('Milestone', change, format_converter=format_milestone)
     elif field == 'estimatedhours':
-        if change['newvalue'] == '':
-            note = '- **Estimated Hours** *%s* deleted' % change['oldvalue']
-        elif change['oldvalue'] != '':
-            note = '- **Estimated Hours** changed from *%s* to *%s*' % (change['oldvalue'], change['newvalue'])
-        else:
-            note = '- **Estimated Hours** set to *%s*' % change['newvalue']
+        note = format_fieldchange('Estimated Hours', change)
+    elif field == 'summary':
+        note = format_fieldchange('Summary', change)
+    elif field == 'status':
+        note = format_fieldchange('Status', change, value_converter=gitlab_status_label, format_converter=format_label)
     elif field == 'version':
-        if change['newvalue'] == '':
-            note = '- **Version** ~"version:%s" deleted' % change['oldvalue']
-        else:
-            note = '- **Version** set to ~"version:%s"' % change['newvalue']
+        def converter(value):
+            return 'version:%s' % value
+        note = format_fieldchange('Version', change, value_converter=converter, format_converter=format_label)
     elif field == 'description':
         if change['oldvalue'] == '':
             # XXX: does this happen or we need only 'diff' render?
             note = '- **Description** changed\n\n%s' % render_html5_details(change['newvalue'])
         else:
             note = '- **Description** changed\n\n%s' % render_text_diff(change['oldvalue'], change['newvalue'])
-    elif field == 'summary':
-        if change['oldvalue'] == '':
-            # XXX: does this happen or we need only 'diff' render?
-            note = '- **Summary** changed to *%s*' % change['newvalue']
-        else:
-            note = '- **Summary** changed from *%s* to *%s*' % (change['oldvalue'], change['newvalue'])
     elif field == 'attachment':
         # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
         # will be saved  relative to the project:
@@ -288,10 +291,6 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={})
             raise Exception('Unexpected empty value for %s' % field)
 
         note = '- **Owner** set to @%s' % change['newvalue']
-    elif field == 'status':
-        oldstatus = gitlab_status_label(change['oldvalue'])
-        newstatus = gitlab_status_label(change['newvalue'])
-        note = '- **Status** changed from ~"%s" to ~"%s"' % (oldstatus, newstatus)
     else:
         raise Exception('Unexpected field %s' % field)
 
