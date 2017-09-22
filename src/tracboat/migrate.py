@@ -216,18 +216,19 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={})
     """
 
     attachments_path = '/uploads/issue_%s' % issue_id
+    field = change['field']
 
-    if change['field'] == 'comment':
+    if field == 'comment':
         note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
 
-    elif change['field'] == 'resolution':
+    elif field == 'resolution':
         if change['newvalue'] == '':
             resolution = gitlab_resolution_label(change['oldvalue'])
             note = '- **Resolution** ~"%s" deleted' % resolution
         else:
             resolution = gitlab_resolution_label(change['newvalue'])
             note = '- **Resolution** set to ~"%s"' % resolution
-    elif change['field'] == 'priority':
+    elif field == 'priority':
         if change['newvalue'] == '':
             label = gitlab_priority_label(change['oldvalue'])
             note = '- **Priority** ~"%s" deleted' % label
@@ -238,61 +239,61 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={})
         else:
             label = gitlab_priority_label(change['newvalue'])
             note = '- **Priority** set to ~"%s"' % label
-    elif change['field'] == 'milestone':
+    elif field == 'milestone':
         if change['newvalue'] == '':
             note = '- **Milestone** %%"%s" deleted' % change['oldvalue']
         elif change['oldvalue'] != '':
             note = '- **Milestone** changed from %%"%s" to %%"%s"' % (change['oldvalue'], change['newvalue'])
         else:
             note = '- **Milestone** set to %%"%s"' % change['newvalue']
-    elif change['field'] == 'estimatedhours':
+    elif field == 'estimatedhours':
         if change['newvalue'] == '':
             note = '- **Estimated Hours** *%s* deleted' % change['oldvalue']
         elif change['oldvalue'] != '':
             note = '- **Estimated Hours** changed from *%s* to *%s*' % (change['oldvalue'], change['newvalue'])
         else:
             note = '- **Estimated Hours** set to *%s*' % change['newvalue']
-    elif change['field'] == 'version':
+    elif field == 'version':
         if change['newvalue'] == '':
             note = '- **Version** ~"version:%s" deleted' % change['oldvalue']
         else:
             note = '- **Version** set to ~"version:%s"' % change['newvalue']
-    elif change['field'] == 'description':
+    elif field == 'description':
         if change['oldvalue'] == '':
             # XXX: does this happen or we need only 'diff' render?
             note = '- **Description** changed\n\n%s' % render_html5_details(change['newvalue'])
         else:
             note = '- **Description** changed\n\n%s' % render_text_diff(change['oldvalue'], change['newvalue'])
-    elif change['field'] == 'summary':
+    elif field == 'summary':
         if change['oldvalue'] == '':
             # XXX: does this happen or we need only 'diff' render?
             note = '- **Summary** changed to *%s*' % change['newvalue']
         else:
             note = '- **Summary** changed from *%s* to *%s*' % (change['oldvalue'], change['newvalue'])
-    elif change['field'] == 'attachment':
+    elif field == 'attachment':
         # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
         # will be saved  relative to the project:
         # /var/opt/gitlab/gitlab-rails/uploads/glen/photoproject/f38feb8a3dc4c5bcabdc41ccc5894ac3
         note = '- **Attachment** [%s](%s/%s) added' % (change['newvalue'], attachments_path, change['newvalue'])
-    elif change['field'] == 'cc':
+    elif field == 'cc':
         if change['newvalue'] == '':
-            raise Exception('Unexpected empty value for %s' % change['field'])
+            raise Exception('Unexpected empty value for %s' % field)
 
         note = '- **Cc** added @%s' % change['newvalue']
-    elif change['field'] == 'owner':
+    elif field == 'owner':
         if change['oldvalue'] == '' and change['newvalue'] == '':
             # XXX no idea why such changes even exist
             note = ''
         elif change['newvalue'] == '':
-            raise Exception('Unexpected empty value for %s' % change['field'])
+            raise Exception('Unexpected empty value for %s' % field)
 
         note = '- **Owner** set to @%s' % change['newvalue']
-    elif change['field'] == 'status':
+    elif field == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
         note = '- **Status** changed from ~"%s" to ~"%s"' % (oldstatus, newstatus)
     else:
-        raise Exception('Unexpected field %s' % change['field'])
+        raise Exception('Unexpected field %s' % field)
 
     return note
 
