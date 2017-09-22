@@ -210,10 +210,16 @@ def render_html5_details(text, summary="Summary"):
 #  dbmodel.Milestone(**milestone_kwargs(trac_milestone))
 ################################################################################
 
-def change_kwargs(change, issue_id=None, note_map={}, svn2git_revisions={}):
+def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={}):
+    """
+    format "note" for change
+    """
+
     attachments_path = '/uploads/issue_%s' % issue_id
+
     if change['field'] == 'comment':
         note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
+
     elif change['field'] == 'resolution':
         if change['newvalue'] == '':
             resolution = gitlab_resolution_label(change['oldvalue'])
@@ -287,6 +293,13 @@ def change_kwargs(change, issue_id=None, note_map={}, svn2git_revisions={}):
         note = '- **Status** changed from ~"%s" to ~"%s"' % (oldstatus, newstatus)
     else:
         raise Exception('Unexpected field %s' % change['field'])
+
+    return note
+
+def change_comment_kwargs(change, note):
+    """
+    called for change['field'] == 'comment'
+    """
 
     return {
         'note': note,
@@ -375,11 +388,11 @@ def merge_changelog(ticket_id, changelog):
         last_change = change
         if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment', 'cc', 'summary', 'owner', 'estimatedhours', 'priority']:
             # just collect 'note', the rest is same anyway
-            note_args = change_kwargs(change, issue_id=ticket_id)
-            if note_args['note'] == '':
-                LOG.info('skip empty comment: %r; change: %r', note_args, change)
+            note = format_change_note(change, issue_id=ticket_id)
+            if note == '':
+                LOG.info('skip empty comment: change: %r', change)
                 continue
-            notes.append(note_args['note'])
+            notes.append(note)
             continue
 
         if change['field'] == 'comment':
@@ -428,10 +441,11 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
         LOG.info('changelog: %r', ticket['changelog'])
         for change in merge_changelog(ticket_id, ticket['changelog']):
             if change['field'] == 'comment':
-                note_args = change_kwargs(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions)
-                if note_args['note'] == '':
-                    LOG.info('skip empty comment: %r; change: %r', note_args, change)
+                note = format_change_note(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions)
+                if note == '':
+                    LOG.info('skip empty comment: change: %r', change)
                     continue
+                note_args = change_comment_kwargs(change, note)
                 # Fix user mapping
                 note_args['author'] = usermap.get(note_args['author'], default_user)
                 note_args['updated_by'] = usermap.get(note_args['updated_by'], default_user)
@@ -439,9 +453,8 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
                 gitlab_note_id = gitlab.comment_issue( issue_id=gitlab_issue_id, binary_attachment=None, **note_args)
                 LOG.info('migrated ticket #%s note: %r', ticket_id, gitlab_note_id)
 
-                if change['field'] == 'comment':
-                    note_map[trac_note_id] = gitlab_note_id
-                    trac_note_id += 1
+                note_map[trac_note_id] = gitlab_note_id
+                trac_note_id += 1
             else:
                 # TODO: skip field: description
                 # skip field: _comment0
