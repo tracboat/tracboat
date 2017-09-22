@@ -228,7 +228,7 @@ def change_kwargs(change, issue_id=None, note_map={}, svn2git_revisions={}):
         elif change['oldvalue'] != '':
             oldvalue = gitlab_priority_label(change['oldvalue'])
             newvalue = gitlab_priority_label(change['newvalue'])
-            note = '- **Priority** changed from ~"**%s**" to ~"**%s**"' % (oldvalue, newvalue)
+            note = '- **Priority** changed from ~"%s" to ~"%s"' % (oldvalue, newvalue)
         else:
             label = gitlab_priority_label(change['newvalue'])
             note = '- **Priority** set to ~"%s"' % label
@@ -241,11 +241,11 @@ def change_kwargs(change, issue_id=None, note_map={}, svn2git_revisions={}):
             note = '- **Milestone** set to %%"%s"' % change['newvalue']
     elif change['field'] == 'estimatedhours':
         if change['newvalue'] == '':
-            note = '- **Estimated Hours** "%s" deleted' % change['oldvalue']
+            note = '- **Estimated Hours** *%s* deleted' % change['oldvalue']
         elif change['oldvalue'] != '':
-            note = '- **Estimated Hours** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
+            note = '- **Estimated Hours** changed from *%s* to *%s*' % (change['oldvalue'], change['newvalue'])
         else:
-            note = '- **Estimated Hours** set to "%s"' % change['newvalue']
+            note = '- **Estimated Hours** set to *%s*' % change['newvalue']
     elif change['field'] == 'version':
         if change['newvalue'] == '':
             note = '- **Version** ~"version:%s" deleted' % change['oldvalue']
@@ -260,9 +260,9 @@ def change_kwargs(change, issue_id=None, note_map={}, svn2git_revisions={}):
     elif change['field'] == 'summary':
         if change['oldvalue'] == '':
             # XXX: does this happen or we need only 'diff' render?
-            note = '- **Summary** changed to "**%s**"' % change['newvalue']
+            note = '- **Summary** changed to *%s*' % change['newvalue']
         else:
-            note = '- **Summary** changed from "**%s**" to "**%s**"' % (change['oldvalue'], change['newvalue'])
+            note = '- **Summary** changed from *%s* to *%s*' % (change['oldvalue'], change['newvalue'])
     elif change['field'] == 'attachment':
         # ![20170905_134928](/uploads/f38feb8a3dc4c5bcabdc41ccc5894ac3/20170905_134928.jpg)
         # will be saved  relative to the project:
@@ -284,7 +284,7 @@ def change_kwargs(change, issue_id=None, note_map={}, svn2git_revisions={}):
     elif change['field'] == 'status':
         oldstatus = gitlab_status_label(change['oldvalue'])
         newstatus = gitlab_status_label(change['newvalue'])
-        note = "- **Status** changed from *%s* to *%s*" % (oldstatus, newstatus)
+        note = '- **Status** changed from ~"%s" to ~"%s"' % (oldstatus, newstatus)
     else:
         raise Exception('Unexpected field %s' % change['field'])
 
