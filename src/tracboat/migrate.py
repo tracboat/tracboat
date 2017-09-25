@@ -35,7 +35,7 @@ TICKET_STATE_TO_ISSUE_STATE = {
     'new': 'opened',
     'assigned': 'opened',
     'accepted': 'opened',
-    'reopened': 'reopened',
+    'reopened': 'opened',
     'closed': 'closed',
 }
 
