@@ -25,6 +25,7 @@ TICKET_PRIORITY_TO_ISSUE_LABEL = {
     'high': 'priority:high',
     'minor': 'priority:minor',
     'critical': 'priority:critical',
+    'blocker': 'priority:blocker',
     # 'medium': None,
     'major': 'priority:major',
     'low': 'priority:low',
@@ -33,6 +34,7 @@ TICKET_PRIORITY_TO_ISSUE_LABEL = {
 TICKET_RESOLUTION_TO_ISSUE_LABEL = {
     'fixed': 'closed:fixed',
     'invalid': 'closed:invalid',
+    'done': 'closed:done',
     'wontfix': 'closed:wontfix',
     'duplicate': 'closed:duplicate',
     'worksforme': 'closed:worksforme',
