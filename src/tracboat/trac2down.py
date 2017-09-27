@@ -49,6 +49,12 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
     text = re.sub(r'^ * ', r'*', text)
     text = re.sub(r'^ \d+. ', r'1.', text)
 
+    # https://stackoverflow.com/a/16891418/2314626
+    def remove_prefix(text, prefix):
+        if text.startswith(prefix):
+            return text[len(prefix):]
+        return text
+
     attachment_re = re.compile(r"""
         \[\[attachment:
             (?P<filename>.+?        # match filename
@@ -75,6 +81,40 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         d = m.groupdict()
         d['attachments_path'] = attachments_path
         return "[%(filename)s](%(attachments_path)s/%(filename)s)" % d
+
+    source_re = re.compile(r"""
+        # default one with brackets
+        \[source:
+            (?P<path>[^]]+)
+        \] |
+
+        # alternative without brackets
+        source:(?P<path2>[\S]+)
+
+    """, re.X)
+    def source_replace(m):
+        """
+        @link https://trac.edgewall.org/wiki/TracLinks#source:links
+
+         - `source:` and `browser:`
+             * simple paths (/dir/file)
+             * paths at a given revision (/dir/file@234)
+             * paths with line number marks (/dir/file@234:10,20-30)
+             * paths with line number anchor (/dir/file@234#L100)
+            Marks and anchor can be combined.
+            The revision must be present when specifying line numbers.
+            In the few cases where it would be redundant (e.g. for tags), the
+            revision number itself can be omitted: /tags/v10/file@100-110#L99
+
+        """
+        d = m.groupdict()
+        path = str(d.get('path', d.get('path2')))
+        path = remove_prefix(path, '/trunk/') # remove branch name, assume default branch
+        path = remove_prefix(path, '/') # remove leading slash, it would not point to source otherwise
+        d.update({
+            'git_path' : path,
+        })
+        return "[%(git_path)s](%(git_path)s)" % d
 
     reply_re = re.compile(r'Replying to \[(?P<type>comment|ticket):(?P<id>\d+)\s+(?P<username>[^]]+)\]:')
     def reply_replace(m):
@@ -156,10 +196,9 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
             line = re.sub(r'\[(https?://[^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](\1)', line)
             line = re.sub(r'\[wiki:([^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](%s/\1)' % os.path.relpath('/wikis/', base_path), line)
             line = re.sub(r'\[wiki:([^\s\[\]]+)\]', r'[\1](\1)', line)
-            line = re.sub(r'\[source:([^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](%s/\1)' % os.path.relpath('/tree/master/', base_path), line)
-            line = re.sub(r'source:([\S]+)', r'[\1](%s/\1)' % os.path.relpath('/tree/master/', base_path), line)
             line = re.sub(r'\!(([A-Z][a-z0-9]+){2,})', r'\1', line)
 
+            line = source_re.sub(source_replace, line)
             line = image_re.sub(image_replace, line)
             line = reply_re.sub(reply_replace, line)
             line = attachment_re.sub(attachment_replace, line)
