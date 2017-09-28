@@ -313,7 +313,7 @@ def change_comment_kwargs(change, note):
         # 'project'
     }
 
-def ticket_kwargs(ticket):
+def ticket_kwargs(ticket_id, ticket):
     priority_labels = ticket_priority(ticket)
     resolution_labels = ticket_resolution(ticket)
     version_labels = ticket_versions(ticket)
@@ -328,7 +328,9 @@ def ticket_kwargs(ticket):
     return {
         'title': ticket['attributes']['summary'],
         'description': _wikiconvert(ticket['attributes']['description'],
-                                    '/issues/', multiline=False),
+                                    '/issues/', multiline=False,
+                                    attachments_path = '/uploads/issue_%s' % ticket_id
+        ),
         'state': state,
         'labels': ','.join(labels),
         'created_at': ticket['attributes']['time'],
@@ -419,7 +421,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
         note_map = {}
         trac_note_id = 1
 
-        issue_args = ticket_kwargs(ticket)
+        issue_args = ticket_kwargs(ticket_id, ticket)
         # Fix user mapping
         issue_args['author'] = usermap.get(issue_args['author'], default_user)
         issue_args['assignee'] = usermap.get(issue_args['assignee'], default_user)
