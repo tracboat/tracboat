@@ -87,13 +87,12 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
 
     source_re = re.compile(r"""
         # default one with brackets
-        \[source:
+        \[(?:source|browser):
             (?P<path>[^]]+)
-        \] |
+        \]
 
         # alternative without brackets
-        source:(?P<path2>\S+)
-
+        | (?:source|browser):(?P<path2>\S+)
     """, re.X)
     def source_replace(m):
         """
@@ -111,9 +110,11 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
 
         """
         d = m.groupdict()
-        path = str(d.get('path', d.get('path2')))
-        path = remove_prefix(path, '/trunk/') # remove branch name, assume default branch
+        if d['path2']:
+            d['path'] = d['path2']
+        path = str(d.get('path'))
         path = remove_prefix(path, '/') # remove leading slash, it would not point to source otherwise
+        path = remove_prefix(path, 'trunk/') # remove branch name, assume default branch
         d.update({
             'git_path' : path,
         })
