@@ -24,7 +24,6 @@ from sys import exit
 
 import six
 
-
 def convert(text, base_path, multilines=True, note_map={}, attachments_path=None, svn2git_revisions={}):
     text = re.sub('\r\n', '\n', text)
     text = re.sub(r'{{{(.*?)}}}', r'`\1`', text)
@@ -62,7 +61,9 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
                     (:(?P<id>.+?))? # match optional id (optional with type)
                 )?
             )
-        \]\]
+        \]\] |
+        # alternative without brackets
+        attachment:(?P<filename2>\S+)
     """, re.X)
     def attachment_replace(m):
         """
@@ -80,6 +81,8 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         """
         d = m.groupdict()
         d['attachments_path'] = attachments_path
+        if d['filename2']:
+            d['filename'] = d['filename2']
         return "[%(filename)s](%(attachments_path)s/%(filename)s)" % d
 
     source_re = re.compile(r"""
@@ -89,7 +92,7 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         \] |
 
         # alternative without brackets
-        source:(?P<path2>[\S]+)
+        source:(?P<path2>\S+)
 
     """, re.X)
     def source_replace(m):
