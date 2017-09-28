@@ -48,31 +48,11 @@ TICKET_STATE_TO_ISSUE_STATE = {
     'closed': 'closed',
 }
 
-################################################################################
-# Wiki format normalization
-################################################################################
-
-CHANGESET_REX = re.compile(
-    r'(?sm)In \[changeset:"([^"/]+?)(?:/[^"]+)?"\]:\n\{\{\{(\n#![^\n]+)?\n(.*?)\n\}\}\}'
-)
-
-CHANGESET2_REX = re.compile(
-    r'\[changeset:([a-zA-Z0-9]+)\]'
-)
-
-
 def _format_changeset_comment(rex):
     return 'In changeset ' + rex.group(1) + ':\n> ' + rex.group(3).replace('\n', '\n> ')
 
-
-def _wikifix(text):
-    text = CHANGESET_REX.sub(_format_changeset_comment, text)
-    text = CHANGESET2_REX.sub(r'\1', text)
-    return text
-
-
 def _wikiconvert(text, basepath, multiline=True, note_map={}, attachments_path=None, svn2git_revisions={}):
-    return trac2down.convert(_wikifix(text), basepath, multiline, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
+    return trac2down.convert(text, basepath, multiline, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
 
 
 ################################################################################
