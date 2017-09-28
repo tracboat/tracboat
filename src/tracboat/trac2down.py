@@ -141,15 +141,17 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         return "Replying to [%(username)s](%(link)s):" % d
 
     commit_re = re.compile(r"""
-        \[(?P<revision>\d+)\] | # revision in brackets
-        r(?P<revision2>\d+) |   # revision with r-prefix
-        \[(?P<rev1>\d+)-(?P<rev2>\d+)\] # revision range
+        \[(?P<revision>\d+)\] # revision in brackets
+        | r(?P<revision2>\d+) # revision with r-prefix
+        | \[(?P<rev1>\d+)-(?P<rev2>\d+)\] # revision range
+        | changeset:(?P<changeset>\d+)
     """, re.X)
     def commit_replace(m):
         """
         (In [35214])
         [36859], [36860]
         Changesets [36872-36874]
+        changeset:38934
         """
         d = m.groupdict()
         d[0] = str(m.group(0))
@@ -159,7 +161,10 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
 
             return "[%(rev1)s..%(rev2)s](../compare/%(rev1)s...%(rev2)s)" % d
         else:
-            revision = str(d.get('revision', d.get('revision2')))
+            if d['changeset']:
+                revision = str(d.get('changeset'))
+            else:
+                revision = str(d.get('revision', d.get('revision2')))
             d['git_hash'] = svn2git_revisions.get(revision, d[0])
 
             return "%(git_hash)s" % d
