@@ -165,7 +165,9 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
             if d['changeset']:
                 revision = str(d.get('changeset'))
             else:
-                revision = str(d.get('revision', d.get('revision2')))
+                if d['revision2']:
+                    d['revision'] = d['revision2']
+                revision = str(d['revision'])
             d['git_hash'] = svn2git_revisions.get(revision, d[0])
 
             return "%(git_hash)s" % d
