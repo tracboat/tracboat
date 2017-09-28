@@ -175,9 +175,12 @@ class Connection(ConnectionBase):
         milestone = self.get_milestone(milestone_name)
         return milestone["id"] if milestone else None
 
-    def get_user_id(self, email):
+    def get_user(self, email):
         M = self.model
-        return M.Users.get(M.Users.email == email).id
+        return M.Users.get(M.Users.email == email)
+
+    def get_user_id(self, email):
+        return self.get_user(email).id
 
     # def get_issues_iid(self):
     #     M = self.model

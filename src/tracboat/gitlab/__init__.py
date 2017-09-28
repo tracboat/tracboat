@@ -76,6 +76,10 @@ class ConnectionBase(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
+    def get_user(self, username):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
     def get_user_id(self, username):
         raise NotImplementedError()
 

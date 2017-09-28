@@ -243,7 +243,7 @@ def format_fieldchange(field_name, change, value_converter=identity_converter, f
 
     return note
 
-def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={}):
+def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={}, username_map={}):
     """
     format "note" for change
     """
@@ -284,6 +284,7 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={})
         if change['newvalue'] == '':
             raise Exception('Unexpected empty value for %s' % field)
 
+        user = username_map.get(change['newvalue'], change['newvalue'])
         note = '- **Cc** added @%s' % change['newvalue']
     elif field == 'owner':
         if change['oldvalue'] == '' and change['newvalue'] == '':
@@ -292,7 +293,8 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={})
         elif change['newvalue'] == '':
             raise Exception('Unexpected empty value for %s' % field)
 
-        note = '- **Owner** set to @%s' % change['newvalue']
+        user = username_map.get(change['newvalue'], change['newvalue'])
+        note = '- **Owner** set to @%s' % user
     else:
         raise Exception('Unexpected field %s' % field)
 
@@ -371,7 +373,7 @@ def sort_changelog(changelog):
     # so sort by date and then items by field being comment
     return sorted(changelog, key = lambda obj: (obj['time'], 1 if obj['field'] == 'comment' else -1, obj['time']))
 
-def merge_changelog(ticket_id, changelog):
+def merge_changelog(ticket_id, changelog, username_map):
     """
     Merge changes of type 'resolution' and 'status' into 'comment', because this is how Trac displays changes.
 
@@ -392,7 +394,7 @@ def merge_changelog(ticket_id, changelog):
         last_change = change
         if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment', 'cc', 'summary', 'owner', 'estimatedhours', 'priority']:
             # just collect 'note', the rest is same anyway
-            note = format_change_note(change, issue_id=ticket_id)
+            note = format_change_note(change, issue_id=ticket_id, username_map=username_map)
             if note == '':
                 LOG.info('skip empty comment: change: %r', change)
                 continue
@@ -414,6 +416,11 @@ def merge_changelog(ticket_id, changelog):
 
 def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_revisions={}):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
+
+    # trac_user_handle -> gitlab_user_handle
+    username_map = {}
+    for trac_user, email in six.iteritems(usermap):
+        username_map[trac_user] = gitlab.get_user(email).username
 
     for ticket_id, ticket in six.iteritems(trac_tickets):
         LOG.info('migrate #%d: %r', ticket_id, ticket)
@@ -443,7 +450,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
 
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
-        for change in merge_changelog(ticket_id, ticket['changelog']):
+        for change in merge_changelog(ticket_id, ticket['changelog'], username_map):
             if change['field'] == 'comment':
                 note = format_change_note(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions)
                 if note == '':
