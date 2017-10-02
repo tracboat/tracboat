@@ -1,4 +1,7 @@
 #!/bin/sh
 set -xe
 
-sudo -H -u git `which tracboat` "$@"
+. VENV/bin/activate
+tracboat=$(which tracboat)
+
+sudo -H -u git "$tracboat" "$@"
