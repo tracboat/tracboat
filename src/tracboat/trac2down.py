@@ -163,7 +163,7 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
             return "[%(rev1)s..%(rev2)s](../compare/%(rev1)s...%(rev2)s)" % d
         else:
             if d['changeset']:
-                revision = str(d.get('changeset'))
+                revision = str(d['changeset'])
             else:
                 if d['revision2']:
                     d['revision'] = d['revision2']
