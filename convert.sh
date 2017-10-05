@@ -9,4 +9,6 @@ if [ ! -d VENV ]; then
 	chmod -R a+rX .
 fi
 
-./tracboat.sh -vv --config-file="$@" migrate >out.log 2>error.log || tail error.log 
+set +e
+./tracboat.sh -vv --config-file="$@" migrate >out.log 2>error.log
+tail error.log
