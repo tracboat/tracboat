@@ -24,6 +24,8 @@ class ConnectionBase(object):
         if not project:
             raise ValueError('invalid project name: {!r}'.format(project_name))
         p_name, p_groups = get_project_components(project_name)
+
+
         # TODO support for subgroups
         # In the meantime we are just creating a group joining all components
         # in a single identifier
@@ -48,13 +50,13 @@ class ConnectionBase(object):
     def project_id(self):
         if not hasattr(self, '_project_id'):
             # pylint: disable=attribute-defined-outside-init
-            self._project_id = self._get_project_id(self.project_name)
+            self._project_id = self._get_project_id()
         return self._project_id
 
     # Protected
 
     @abc.abstractmethod
-    def _get_project_id(self, project_name):
+    def _get_project_id(self):
         raise NotImplementedError()
 
     # Public API

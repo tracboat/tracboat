@@ -102,10 +102,10 @@ class Connection(ConnectionBase):
             LOG.debug("project %r created in namespace %r",
                       self.project_name, self.project_namespace)
 
-    def _get_project_id(self, project_name):
-        project = self._get_project(project_name)
+    def _get_project_id(self):
+        project = self._get_project(self.project_name, self.project_namespace)
         if not project:
-            raise ValueError("Project {!r} not found".format(project_name))
+            raise ValueError("Project {!r} not found".format(self.project_qualname))
         return project["id"]
 
     def _get_project(self, p_name, p_namespace=None):
@@ -169,7 +169,7 @@ class Connection(ConnectionBase):
             return None
 
     def get_project(self):
-        return self._get_project(self.project_name)
+        return self._get_project(self.project_name, self.project_namespace)
 
     def get_milestone_id(self, milestone_name):
         milestone = self.get_milestone(milestone_name)
