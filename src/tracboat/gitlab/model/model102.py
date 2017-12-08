@@ -1182,7 +1182,7 @@ class MergeRequests(BaseModel):
     in_progress_merge_commit_sha = CharField(null=True)
     last_edited_at = DateTimeField(null=True)
     last_edited_by = IntegerField(db_column='last_edited_by_id', null=True)
-    latest_merge_request_diff = ForeignKeyField(db_column='latest_merge_request_diff_id', null=True, rel_model=MergeRequestDiffs, to_field='id')
+    #latest_merge_request_diff = ForeignKeyField(db_column='latest_merge_request_diff_id', null=True, rel_model=MergeRequestDiffs, to_field='id')
     lock_version = IntegerField(null=True)
     merge_commit_sha = CharField(null=True)
     merge_error = TextField(null=True)
