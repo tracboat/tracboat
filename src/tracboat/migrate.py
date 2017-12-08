@@ -278,7 +278,9 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
     else:
         raise Exception('Unexpected field %s' % field)
 
-    return note
+    # ensure we do not yield empty note
+    # https://gitlab.com/gitlab-org/gitlab-ce/issues/40297#note_47872749
+    return note.strip()
 
 def change_comment_kwargs(change, note):
     """
