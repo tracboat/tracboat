@@ -1,5 +1,5 @@
 #!/bin/sh
-set -xe
+set -e
 
 . VENV/bin/activate
 tracboat=$(which tracboat)

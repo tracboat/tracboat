@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -xe
+set -e
 
 if [ ! -d VENV ]; then
 	virtualenv -p python2.7 VENV
