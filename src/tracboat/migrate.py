@@ -263,7 +263,8 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
         note = '- **Attachment** [%s](%s/%s) added' % (change['newvalue'], attachments_path, change['newvalue'])
     elif field == 'cc':
         if change['newvalue'] == '':
-            raise Exception('Unexpected empty value for %s' % field)
+            LOG.error('Unexpected empty value for %s' % field)
+            return ''
 
         user = username_map.get(change['newvalue'], change['newvalue'])
         note = '- **Cc** added @%s' % change['newvalue']
@@ -272,7 +273,8 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
             # XXX no idea why such changes even exist
             note = ''
         elif change['newvalue'] == '':
-            raise Exception('Unexpected empty value for %s' % field)
+            LOG.error('Unexpected empty value for %s' % field)
+            return ''
 
         user = username_map.get(change['newvalue'], change['newvalue'])
         note = '- **Owner** set to @%s' % user
