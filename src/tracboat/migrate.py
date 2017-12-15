@@ -29,6 +29,7 @@ TICKET_PRIORITY_TO_ISSUE_LABEL = {
     # 'medium': None,
     'major': 'priority:major',
     'low': 'priority:low',
+    'trivial': 'priority:trivial',
 }
 
 TICKET_RESOLUTION_TO_ISSUE_LABEL = {
