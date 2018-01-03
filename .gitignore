@@ -65,3 +65,4 @@ target/
 
 # Development virtualenv
 .venv/
+/VENV
