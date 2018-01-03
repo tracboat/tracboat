@@ -459,6 +459,9 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
                 # skip field: type
                 LOG.info('skip field: %s', change['field'])
 
+        # process 1 ticket only
+#        return
+
 # for ticket comments to appear normally, we created all milestones as 'active'
 # now close the milestones that are 'closed'
 def close_milestones(trac_milestones, gitlab):
@@ -564,6 +567,7 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     migrate_milestones(trac['milestones'], gitlab)
     # 3. Issues
     migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap, svn2git_revisions=svn2git_revisions)
-    #close_milestones(trac['milestones'], gitlab) - gitlab bug?
+    # - gitlab bug?
+    close_milestones(trac['milestones'], gitlab)
     # Farewell
     LOG.info('done migration of project %r to GitLab ver. %s', gitlab_project_name, gitlab_version)
