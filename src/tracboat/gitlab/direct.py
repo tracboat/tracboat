@@ -79,6 +79,7 @@ class Connection(ConnectionBase):
         self.model.Labels.create_table(fail_silently=True)
         self.model.Users.create_table(fail_silently=True)
         self.model.Issues.create_table(fail_silently=True)
+        self.model.IssueAssignees.create_table(fail_silently=True)
         self.model.LabelLinks.create_table(fail_silently=True)
         self.model.Notes.create_table(fail_silently=True)
         if create_missing and not self._get_project(self.project_name, self.project_namespace):
@@ -259,6 +260,11 @@ class Connection(ConnectionBase):
             updated_at=issue.created_at
         )
         event.save()
+
+        # save issue assignee
+        # need to use .raw, because primary_key = False
+        M.IssueAssignees.raw("insert into issue_assignees (issue_id, user_id) values (%s, %s)", issue.id, issue.assignee).execute()
+
         # 3. Labels
         # TODO move label creation in a separate method
         for title in issue.labels.split(','):
