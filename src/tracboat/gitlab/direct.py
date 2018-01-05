@@ -236,6 +236,21 @@ class Connection(ConnectionBase):
         milestone.state = 'closed'
         milestone.save()
 
+    def create_label(self, label):
+        M = self.model
+        try:
+            M.Labels.get((M.Labels.title == label.title) & (M.Labels.project == self.project_id))
+        except M.Labels.DoesNotExist:
+            description = "%s label from Trac" % label.TYPE
+            M.Labels.create(
+                title=label.title,
+                color=label.COLOR,
+                project=self.project_id,
+                description=description,
+                description_html=description,
+                type='ProjectLabel',
+            ).save()
+
     def create_issue(self, **kwargs):
         M = self.model
         # 1. Issue
@@ -265,23 +280,9 @@ class Connection(ConnectionBase):
         # need to use .raw, because primary_key = False
         M.IssueAssignees.raw("insert into issue_assignees (issue_id, user_id) values (%s, %s)", issue.id, issue.assignee).execute()
 
-        # 3. Labels
-        # TODO move label creation in a separate method
+        # 3. Label links
         for title in issue.labels.split(','):
-            try:
-                label = M.Labels.get((M.Labels.title == title) &
-                                     (M.Labels.project == self.project_id))
-            except M.Labels.DoesNotExist:
-                label = M.Labels.create(
-                    title=title,
-                    color='#0000FF',
-                    project=issue.project,
-                    description_html='Label from Trac import',
-                    type='ProjectLabel',
-                    created_at=issue.created_at,
-                    update_at=issue.created_at
-                )
-                label.save()
+            label = M.Labels.get((M.Labels.title == title) & (M.Labels.project == self.project_id))
             label_link = M.LabelLinks.create(
                 label=label.id,
                 target=issue.id,
@@ -290,6 +291,7 @@ class Connection(ConnectionBase):
                 update_at=issue.created_at
             )
             label_link.save()
+
         return issue.id
 
     def comment_issue(self, issue_id=None, binary_attachment=None, **kwargs):

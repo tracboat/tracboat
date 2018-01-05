@@ -119,26 +119,37 @@ class LabelStatus(LabelAbstract):
 # when in trac we have 
 # then in gitlab we have just labels
 class LabelManager():
-#    LABEL_PRIORITY = 'priority'
-#    LABEL_RESOLUTION = 'resolution'
-#    LABEL_VERSION = 'version'
-#    LABEL_COMPONENT = 'component'
-#    LABEL_TYPE = 'type'
-#    LABEL_STATE = 'state'
-
     def __init__(self, gitlab, logger):
         self.gitlab = gitlab
         self.logger = logger
         self.issues = {}
 
+    def collect_labels(self, tickets):
+        """
+        Walk over tickets list,
+        caches result in ticket object "labels" key.
+        """
+
+        self.logger.info('Labels: process %d tickets', len(tickets))
+        # labels of all issues
+        labels = {}
+        for ticket_id, ticket in six.iteritems(tickets):
+            ticket['labels'] = self.ticket_labels(ticket)
+            [labels.update({x.title:x}) for x in ticket['labels']]
+
+        return labels
+
     def create_labels(self, tickets):
         """
-        Create Labels in gitlab
+        Create Labels in gitlab.
+        Caches result in ticket object "labels" key.
         """
-        self.logger.info('Labels: process %d tickets', len(tickets))
-        for ticket_id, ticket in six.iteritems(tickets):
-            labels = self.ticket_labels(ticket)
-            pprint([x for x in labels])
+
+        labels = self.collect_labels(tickets)
+        self.logger.info('Labels: Create %d labels', len(labels))
+
+        for label in labels.values():
+            self.gitlab.create_label(label)
 
     def ticket_labels(self, ticket):
         """
@@ -156,7 +167,8 @@ class LabelManager():
         ]
 
         for cls in classes:
-            labels.extend([x for x in self.factory(cls, ticket)])
+            gen = self.factory(cls, ticket)
+            [labels.append(x) for x in gen]
 
         return labels
 
@@ -164,14 +176,3 @@ class LabelManager():
         for title in cls.from_ticket(ticket):
             if title != '':
                 yield cls(title)
-
-TICKET_PRIORITY_TO_ISSUE_LABEL = {
-    'high': 'priority:high',
-    'minor': 'priority:minor',
-    'critical': 'priority:critical',
-    'blocker': 'priority:blocker',
-    # 'medium': None,
-    'major': 'priority:major',
-    'low': 'priority:low',
-    'trivial': 'priority:trivial',
-}

@@ -454,8 +454,7 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     migrate_milestones(trac['milestones'], gitlab)
 
     labelmanager = LabelManager(gitlab, LOG)
-    labelmanager.create_labels(trac['tickets'])
-    labels = {}
+    labels = labelmanager.create_labels(trac['tickets'])
     exit(3)
 
     # 3. Issues
