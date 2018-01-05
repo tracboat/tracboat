@@ -15,22 +15,12 @@ import six
 from tracboat import trac2down
 from tracboat.gitlab import direct  # TODO selectable mode (api/direct)
 from tracboat.gitlab import model
+from tracboat.labels import *
 
 __all__ = ['migrate']
 
 LOG = logging.getLogger(__name__)
 #logging.basicConfig(filename='comment.log', filemode='w', level=logging.INFO)
-
-TICKET_PRIORITY_TO_ISSUE_LABEL = {
-    'high': 'priority:high',
-    'minor': 'priority:minor',
-    'critical': 'priority:critical',
-    'blocker': 'priority:blocker',
-    # 'medium': None,
-    'major': 'priority:major',
-    'low': 'priority:low',
-    'trivial': 'priority:trivial',
-}
 
 TICKET_RESOLUTION_TO_ISSUE_LABEL = {
     'fixed': 'closed:fixed',
@@ -39,14 +29,6 @@ TICKET_RESOLUTION_TO_ISSUE_LABEL = {
     'wontfix': 'closed:wontfix',
     'duplicate': 'closed:duplicate',
     'worksforme': 'closed:worksforme',
-}
-
-TICKET_STATE_TO_ISSUE_STATE = {
-    'new': 'opened',
-    'assigned': 'opened',
-    'accepted': 'opened',
-    'reopened': 'opened',
-    'closed': 'closed',
 }
 
 def _format_changeset_comment(rex):
@@ -68,14 +50,6 @@ def gitlab_priority_label(priority, priority_to_label=None):
         # todo find a meaningful default value for unknown resolutions
         raise ValueError('no label for {} priority'.format(priority))
 
-def ticket_priority(ticket, priority_to_label=None):
-    priority_to_label = priority_to_label or TICKET_PRIORITY_TO_ISSUE_LABEL
-    priority = ticket['attributes']['priority']
-    if priority in priority_to_label:
-        return {priority_to_label[priority]}
-    else:
-        return set()
-
 def gitlab_resolution_label(resolution, resolution_to_label=None):
     resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
     if resolution in resolution_to_label:
@@ -84,72 +58,6 @@ def gitlab_resolution_label(resolution, resolution_to_label=None):
         # todo find a meaningful default value for unknown resolutions
         raise ValueError('no label for {} resolution'.format(resolution))
 
-def ticket_resolution(ticket, resolution_to_label=None):
-    resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
-    resolution = ticket['attributes']['resolution']
-
-    if resolution in resolution_to_label:
-        return {resolution_to_label[resolution]}
-    else:
-        return set()
-
-
-def version_label(version):
-    return 'version:{}'.format(version)
-
-def ticket_versions(ticket):
-    labels = set()
-
-    try:
-        labels.add(version_label(ticket['attributes']['version']))
-    except KeyError:
-        pass
-
-    def add_version(labels, version):
-        if version == '':
-            return
-        labels.add(version_label(version))
-
-    # get versions from changelog
-    for change in ticket['changelog']:
-        if change['field'] == 'version':
-            add_version(labels, change['oldvalue'])
-            add_version(labels, change['newvalue'])
-
-    return labels
-
-def ticket_components(ticket):
-    components = ticket['attributes']['component'].split(',')
-    return {'comp:{}'.format(comp.strip()) for comp in components}
-
-def ticket_note_labels(ticket):
-    labels = set()
-
-    for change in ticket['changelog']:
-        if not change['field'] in ['resolution', 'status']:
-            continue
-
-        if change['field'] == 'resolution':
-            if change['newvalue'] == '':
-                label = gitlab_resolution_label(change['oldvalue'])
-                labels.add(label)
-            else:
-                label = gitlab_resolution_label(change['newvalue'])
-                labels.add(label)
-
-        if change['field'] == 'status':
-            label = gitlab_status_label(change['oldvalue'])
-            labels.add(label)
-            label = gitlab_status_label(change['newvalue'])
-            labels.add(label)
-
-    return labels
-
-def ticket_type(ticket):
-    ttype = ticket['attributes']['type']
-    return {'type:{}'.format(ttype.strip())}
-
-
 def gitlab_status_label(status, status_to_state=None):
     status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
     if status in status_to_state:
@@ -157,16 +65,6 @@ def gitlab_status_label(status, status_to_state=None):
     else:
         # todo find a meaningful default value for unknown statuses
         raise ValueError('no label for {} status'.format(status))
-
-
-def ticket_state(ticket, status_to_state=None):
-    status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
-    state = ticket['attributes']['status']
-    if state in status_to_state:
-        return status_to_state[state], set()
-    else:
-        return None, {'state:{}'.format(state)}
-
 
 # https://stackoverflow.com/a/21790513
 # https://stackoverflow.com/a/22043027
@@ -301,17 +199,6 @@ def change_comment_kwargs(change, note):
     }
 
 def ticket_kwargs(ticket_id, ticket):
-    priority_labels = ticket_priority(ticket)
-    resolution_labels = ticket_resolution(ticket)
-    version_labels = ticket_versions(ticket)
-    component_labels = ticket_components(ticket)
-    type_labels = ticket_type(ticket)
-    state, state_labels = ticket_state(ticket)
-    note_labels = ticket_note_labels(ticket)
-
-    labels = priority_labels | resolution_labels | version_labels | \
-        component_labels | type_labels | state_labels | note_labels
-
     return {
         'title': ticket['attributes']['summary'],
         'description': _wikiconvert(ticket['attributes']['description'],
@@ -319,7 +206,6 @@ def ticket_kwargs(ticket_id, ticket):
                                     attachments_path = '/uploads/issue_%s' % ticket_id
         ),
         'state': state,
-        'labels': ','.join(labels),
         'created_at': ticket['attributes']['time'],
         'updated_at': ticket['attributes']['changetime'],
         # References:
@@ -399,7 +285,7 @@ def merge_changelog(ticket_id, changelog, username_map):
     if len(notes):
         yield insert_notes(last_change, notes)
 
-def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_revisions={}):
+def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_revisions={}, labels={}):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
 
     # trac_user_handle -> gitlab_user_handle
@@ -414,6 +300,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
         trac_note_id = 1
 
         issue_args = ticket_kwargs(ticket_id, ticket)
+        issue_args['labels'] = ','.join(labels[ticket_id])
         # Fix user mapping
         issue_args['author'] = usermap.get(issue_args['author'], default_user)
         issue_args['assignee'] = usermap.get(issue_args['assignee'], default_user)
@@ -565,8 +452,14 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
 #    migrate_wiki(trac['wiki'], gitlab, output_wiki_path)
     # 2. Milestones
     migrate_milestones(trac['milestones'], gitlab)
+
+    labelmanager = LabelManager(gitlab, LOG)
+    labelmanager.create_labels(trac['tickets'])
+    labels = {}
+    exit(3)
+
     # 3. Issues
-    migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap, svn2git_revisions=svn2git_revisions)
+    migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap, svn2git_revisions=svn2git_revisions, labels=labels)
     # - gitlab bug?
     close_milestones(trac['milestones'], gitlab)
     # Farewell

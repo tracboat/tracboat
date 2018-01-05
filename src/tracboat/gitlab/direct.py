@@ -276,6 +276,7 @@ class Connection(ConnectionBase):
                     title=title,
                     color='#0000FF',
                     project=issue.project,
+                    description_html='Label from Trac import',
                     type='ProjectLabel',
                     created_at=issue.created_at,
                     update_at=issue.created_at
