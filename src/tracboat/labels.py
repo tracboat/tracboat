@@ -146,16 +146,17 @@ class LabelManager():
         """
 
         labels = []
-        labels.extend([x for x in self.factory(LabelPriority, ticket)])
-        labels.append([x for x in self.factory(LabelResolution, ticket)])
-        labels.append([x for x in self.factory(LabelVersion, ticket)])
-        labels.append([x for x in self.factory(LabelComponent, ticket)])
-        labels.append([x for x in self.factory(LabelType, ticket)])
-        labels.append([x for x in self.factory(LabelStatus, ticket)])
-#
-#        labels = priority_labels | resolution_labels | version_labels | \
-#            component_labels | type_labels | state_labels | note_labels
-#        labels = priority_labels
+        classes = [
+            LabelPriority,
+            LabelResolution,
+            LabelVersion,
+            LabelComponent,
+            LabelType,
+            LabelStatus,
+        ]
+
+        for cls in classes:
+            labels.extend([x for x in self.factory(cls, ticket)])
 
         return labels
 
