@@ -2,8 +2,10 @@
 
 import shelve
 import sys
-from pprint import pprint
 
 filename = sys.argv[1]
 db = shelve.open(filename)
-pprint(db)
+for k,v in db.iteritems():
+    print "'%s' => '%s'" % (k, v)
+
+db.close()
