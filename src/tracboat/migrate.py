@@ -414,6 +414,7 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     # XXX: this clears also milestones
     # XXX: make configurable
     gitlab.clear_issues()
+#    gitlab.clear_labels()
 
     # 1. Wiki
 #    LOG.info('migrating %d wiki pages to: %s', len(trac['wiki']), output_wiki_path)

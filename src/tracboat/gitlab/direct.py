@@ -124,7 +124,7 @@ class Connection(ConnectionBase):
         except M.Projects.DoesNotExist:
             return None
 
-    def clear_issues(self):
+    def clear_labels(self):
         M = self.model
         # Delete all the uses of the labels of the project.
         # XXX labels could be used by merge requests as well!!!
@@ -132,7 +132,10 @@ class Connection(ConnectionBase):
             M.LabelLinks.delete().where(M.LabelLinks.label == label.id).execute()
             # You probably do not want to delete the labels themselves, otherwise you'd need to
             # set their colour every time when you re-run the migration.
-            # label.delete_instance()
+            label.delete_instance()
+
+    def clear_issues(self):
+        M = self.model
         # Delete issues and everything that goes with them...
         for issue in M.Issues.select().where(M.Issues.project == self.project_id):
             for note in M.Notes.select().where((M.Notes.project == self.project_id) &
