@@ -6,6 +6,7 @@ from pprint import pprint
 class LabelAbstract():
     TYPE = None
     COLOR = None
+    ATTRIBUTE_NAME = None
     MAPPING = {}
 
     def __init__(self, title):
@@ -18,86 +19,55 @@ class LabelAbstract():
         else:
             return title
 
-    @staticmethod
-    def from_ticket(ticket):
+    @classmethod
+    def from_ticket(cls, ticket):
         """
         yield possible names from trac ticket
         """
-        pass
+        attribute_name = cls.ATTRIBUTE_NAME
+        try:
+            values = ticket['attributes'][attribute_name].split(',')
+        except KeyError:
+            pass
+
+        for value in values:
+            yield value
+
+        # get versions from changelog
+        for change in ticket['changelog']:
+            if change['field'] == attribute_name:
+                yield change['oldvalue']
+                yield change['newvalue']
 
 class LabelPriority(LabelAbstract):
     TYPE = 'priority'
     COLOR = '#D9534F'
-
-    @staticmethod
-    def from_ticket(ticket):
-        try:
-            yield ticket['attributes']['priority']
-        except KeyError:
-            pass
+    ATTRIBUTE_NAME = 'priority'
 
 class LabelResolution(LabelAbstract):
     TYPE = 'resolution'
     COLOR = '#AD8D43'
-
-    @staticmethod
-    def from_ticket(ticket):
-        try:
-            yield ticket['attributes']['resolution']
-        except KeyError:
-            pass
-
-        # get versions from changelog
-        for change in ticket['changelog']:
-            if change['field'] == 'resolution':
-                yield change['oldvalue']
-                yield change['newvalue']
+    ATTRIBUTE_NAME = 'resolution'
 
 class LabelVersion(LabelAbstract):
     TYPE = 'version'
     COLOR = '#5CB85C'
-
-    @staticmethod
-    def from_ticket(ticket):
-        try:
-            yield ticket['attributes']['version']
-        except KeyError:
-            pass
-
-        # get versions from changelog
-        for change in ticket['changelog']:
-            if change['field'] == 'version':
-                yield change['oldvalue']
-                yield change['newvalue']
+    ATTRIBUTE_NAME = 'version'
 
 class LabelComponent(LabelAbstract):
     TYPE = 'component'
     COLOR = '#8E44AD'
-
-    @staticmethod
-    def from_ticket(ticket):
-        try:
-            components = ticket['attributes']['component'].split(',')
-        except KeyError:
-            return
-
-        for comp in components:
-            yield comp
+    ATTRIBUTE_NAME = 'component'
 
 class LabelType(LabelAbstract):
     TYPE = 'type'
     COLOR = '#A295D6'
-
-    @staticmethod
-    def from_ticket(ticket):
-        try:
-            yield ticket['attributes']['type']
-        except KeyError:
-            pass
+    ATTRIBUTE_NAME = 'type'
 
 class LabelStatus(LabelAbstract):
-    TYPE = 'state'
+    TYPE = 'status'
     COLOR = '#0033CC'
+    ATTRIBUTE_NAME = 'status'
     MAPPING = {
         'new': 'opened',
         'assigned': 'opened',
@@ -105,18 +75,6 @@ class LabelStatus(LabelAbstract):
         'reopened': 'opened',
         'closed': 'closed',
     }
-
-    @staticmethod
-    def from_ticket(ticket):
-        try:
-            yield ticket['attributes']['status']
-        except KeyError:
-            pass
-
-        for change in ticket['changelog']:
-            if change['field'] == 'status':
-                yield change['oldvalue']
-                yield change['newvalue']
 
 class LabelSet():
     def __init__(self):
