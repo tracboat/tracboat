@@ -28,6 +28,7 @@ class LabelAbstract():
         try:
             values = ticket['attributes'][attribute_name].split(',')
         except KeyError:
+            values = []
             pass
 
         for value in values:
