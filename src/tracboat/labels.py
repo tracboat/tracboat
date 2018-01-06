@@ -9,10 +9,14 @@ class LabelAbstract():
     MAPPING = {}
 
     def __init__(self, title):
-        if title in self.MAPPING:
-            self.title = self.MAPPING[title]
+        self.title = self.convert_value(title)
+
+    @classmethod
+    def convert_value(cls, title):
+        if title in cls.MAPPING:
+            return cls.MAPPING[title]
         else:
-            self.title = title
+            return title
 
     @staticmethod
     def from_ticket(ticket):

@@ -20,16 +20,6 @@ from tracboat.labels import *
 __all__ = ['migrate']
 
 LOG = logging.getLogger(__name__)
-#logging.basicConfig(filename='comment.log', filemode='w', level=logging.INFO)
-
-TICKET_RESOLUTION_TO_ISSUE_LABEL = {
-    'fixed': 'closed:fixed',
-    'invalid': 'closed:invalid',
-    'done': 'closed:done',
-    'wontfix': 'closed:wontfix',
-    'duplicate': 'closed:duplicate',
-    'worksforme': 'closed:worksforme',
-}
 
 def _format_changeset_comment(rex):
     return 'In changeset ' + rex.group(1) + ':\n> ' + rex.group(3).replace('\n', '\n> ')
@@ -42,29 +32,8 @@ def _wikiconvert(text, basepath, multiline=True, note_map={}, attachments_path=N
 # Trac ticket metadata conversion
 ################################################################################
 
-def gitlab_priority_label(priority, priority_to_label=None):
-    priority_to_label = priority_to_label or TICKET_PRIORITY_TO_ISSUE_LABEL
-    if priority in priority_to_label:
-        return priority_to_label[priority]
-    else:
-        # todo find a meaningful default value for unknown resolutions
-        raise ValueError('no label for {} priority'.format(priority))
-
-def gitlab_resolution_label(resolution, resolution_to_label=None):
-    resolution_to_label = resolution_to_label or TICKET_RESOLUTION_TO_ISSUE_LABEL
-    if resolution in resolution_to_label:
-        return resolution_to_label[resolution]
-    else:
-        # todo find a meaningful default value for unknown resolutions
-        raise ValueError('no label for {} resolution'.format(resolution))
-
 def gitlab_status_label(status, status_to_state=None):
-    status_to_state = status_to_state or TICKET_STATE_TO_ISSUE_STATE
-    if status in status_to_state:
-        return status_to_state[status]
-    else:
-        # todo find a meaningful default value for unknown statuses
-        raise ValueError('no label for {} status'.format(status))
+    return LabelStatus.convert_value(status)
 
 # https://stackoverflow.com/a/21790513
 # https://stackoverflow.com/a/22043027
@@ -133,9 +102,9 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
     if field == 'comment':
         note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
     elif field == 'resolution':
-        note = format_fieldchange('Resolution', change, value_converter=gitlab_resolution_label, format_converter=format_label)
+        note = format_fieldchange('Resolution', change, format_converter=format_label)
     elif field == 'priority':
-        note = format_fieldchange('Priority', change, value_converter=gitlab_priority_label, format_converter=format_label)
+        note = format_fieldchange('Priority', change, format_converter=format_label)
     elif field == 'milestone':
         note = format_fieldchange('Milestone', change, format_converter=format_milestone)
     elif field == 'estimatedhours':
@@ -145,9 +114,7 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
     elif field == 'status':
         note = format_fieldchange('Status', change, value_converter=gitlab_status_label, format_converter=format_label)
     elif field == 'version':
-        def converter(value):
-            return 'version:%s' % value
-        note = format_fieldchange('Version', change, value_converter=converter, format_converter=format_label)
+        note = format_fieldchange('Version', change, format_converter=format_label)
     elif field == 'description':
         if change['oldvalue'] == '':
             # XXX: does this happen or we need only 'diff' render?
