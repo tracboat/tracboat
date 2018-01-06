@@ -205,7 +205,6 @@ def ticket_kwargs(ticket_id, ticket):
                                     '/issues/', multiline=False,
                                     attachments_path = '/uploads/issue_%s' % ticket_id
         ),
-        'state': state,
         'created_at': ticket['attributes']['time'],
         'updated_at': ticket['attributes']['changetime'],
         # References:
@@ -300,7 +299,9 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
         trac_note_id = 1
 
         issue_args = ticket_kwargs(ticket_id, ticket)
-        issue_args['labels'] = ','.join([x.title for x in labelmanager.ticket_labels(ticket).values()])
+        label_set = ticket['labels']
+        issue_args['state'] = label_set.get_status_label().title
+        issue_args['labels'] = ','.join(label_set.get_label_titles())
         # Fix user mapping
         issue_args['author'] = usermap.get(issue_args['author'], default_user)
         issue_args['assignee'] = usermap.get(issue_args['assignee'], default_user)

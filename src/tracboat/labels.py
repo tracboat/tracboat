@@ -117,12 +117,14 @@ class LabelStatus(LabelAbstract):
 class LabelSet():
     def __init__(self):
         self.labels = {}
+        self.label_by_type = {}
 
     def __len__(self):
         return len(self.labels)
 
     def add(self, label):
         self.labels.update({label.title: label})
+        self.label_by_type[label.TYPE] = label
 
     def values(self):
         return self.labels.values()
@@ -130,6 +132,12 @@ class LabelSet():
     def add_many(self, labels):
         for label in labels:
             self.add(label)
+
+    def get_status_label(self):
+        return self.label_by_type[LabelStatus.TYPE]
+
+    def get_label_titles(self):
+        return [x.title for x in self.values()]
 
 # class handling labels management
 # when in trac we have 
