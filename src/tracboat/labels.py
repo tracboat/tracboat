@@ -114,6 +114,22 @@ class LabelStatus(LabelAbstract):
                 yield change['oldvalue']
                 yield change['newvalue']
 
+class LabelSet():
+    def __init__(self):
+        self.labels = {}
+
+    def __len__(self):
+        return len(self.labels)
+
+    def add(self, label):
+        self.labels.update({label.title: label})
+
+    def values(self):
+        return self.labels.values()
+
+    def add_many(self, labels):
+        for label in labels:
+            self.add(label)
 
 # class handling labels management
 # when in trac we have 
@@ -132,10 +148,11 @@ class LabelManager():
 
         self.logger.info('Labels: process %d tickets', len(tickets))
         # labels of all issues
-        labels = {}
+        labels = LabelSet()
         for ticket_id, ticket in six.iteritems(tickets):
-            ticket['labels'] = self.ticket_labels(ticket)
-            [labels.update({x.title:x}) for x in ticket['labels']]
+            if not 'labels' in ticket:
+                ticket['labels'] = self.ticket_labels(ticket)
+            labels.add_many(ticket['labels'].values())
 
         return labels
 
@@ -156,7 +173,7 @@ class LabelManager():
         Get labels related to Trac ticket
         """
 
-        labels = []
+        labels = LabelSet()
         classes = [
             LabelPriority,
             LabelResolution,
@@ -168,7 +185,7 @@ class LabelManager():
 
         for cls in classes:
             gen = self.factory(cls, ticket)
-            [labels.append(x) for x in gen]
+            labels.add_many(gen)
 
         return labels
 

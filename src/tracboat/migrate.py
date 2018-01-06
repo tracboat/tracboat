@@ -285,7 +285,7 @@ def merge_changelog(ticket_id, changelog, username_map):
     if len(notes):
         yield insert_notes(last_change, notes)
 
-def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_revisions={}, labels={}):
+def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_revisions={}, labelmanager=None):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
 
     # trac_user_handle -> gitlab_user_handle
@@ -300,7 +300,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
         trac_note_id = 1
 
         issue_args = ticket_kwargs(ticket_id, ticket)
-        issue_args['labels'] = ','.join(labels[ticket_id])
+        issue_args['labels'] = ','.join([x.title for x in labelmanager.ticket_labels(ticket).values()])
         # Fix user mapping
         issue_args['author'] = usermap.get(issue_args['author'], default_user)
         issue_args['assignee'] = usermap.get(issue_args['assignee'], default_user)
@@ -453,12 +453,12 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     # 2. Milestones
     migrate_milestones(trac['milestones'], gitlab)
 
+    # create labels
     labelmanager = LabelManager(gitlab, LOG)
-    labels = labelmanager.create_labels(trac['tickets'])
-    exit(3)
+    labelmanager.create_labels(trac['tickets'])
 
     # 3. Issues
-    migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap, svn2git_revisions=svn2git_revisions, labels=labels)
+    migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap, svn2git_revisions=svn2git_revisions, labelmanager=labelmanager)
     # - gitlab bug?
     close_milestones(trac['milestones'], gitlab)
     # Farewell
