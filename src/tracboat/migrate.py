@@ -2,9 +2,7 @@
 
 import logging
 import os
-import random
 import re
-import string
 import difflib
 from itertools import chain
 from sys import exit
@@ -16,6 +14,7 @@ from tracboat import trac2down
 from tracboat.gitlab import direct  # TODO selectable mode (api/direct)
 from tracboat.gitlab import model
 from tracboat.labels import *
+from tracboat.users import *
 
 __all__ = ['migrate']
 
@@ -91,7 +90,7 @@ def format_fieldchange(field_name, change, value_converter=identity_converter, f
 
     return note
 
-def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={}, username_map={}):
+def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={}, usermanager=None):
     """
     format "note" for change
     """
@@ -131,7 +130,7 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
             LOG.error('Unexpected empty value for %s' % field)
             return ''
 
-        user = username_map.get(change['newvalue'], change['newvalue'])
+        user = usermanager.get_login(change['newvalue'], change['newvalue'])
         note = '- **Cc** added @%s' % change['newvalue']
     elif field == 'owner':
         if change['oldvalue'] == '' and change['newvalue'] == '':
@@ -141,7 +140,7 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
             LOG.error('Unexpected empty value for %s' % field)
             return ''
 
-        user = username_map.get(change['newvalue'], change['newvalue'])
+        user = usermanager.get_login(change['newvalue'], change['newvalue'])
         note = '- **Owner** set to @%s' % user
     else:
         raise Exception('Unexpected field %s' % field)
@@ -213,7 +212,7 @@ def sort_changelog(changelog):
     # so sort by date and then items by field being comment
     return sorted(changelog, key = lambda obj: (obj['time'], 1 if obj['field'] == 'comment' else -1, obj['time']))
 
-def merge_changelog(ticket_id, changelog, username_map):
+def merge_changelog(ticket_id, changelog, usermanager):
     """
     Merge changes of type 'resolution' and 'status' into 'comment', because this is how Trac displays changes.
 
@@ -234,7 +233,7 @@ def merge_changelog(ticket_id, changelog, username_map):
         last_change = change
         if change['field'] in ['resolution', 'status', 'milestone', 'version', 'description', 'attachment', 'cc', 'summary', 'owner', 'estimatedhours', 'priority']:
             # just collect 'note', the rest is same anyway
-            note = format_change_note(change, issue_id=ticket_id, username_map=username_map)
+            note = format_change_note(change, issue_id=ticket_id, usermanager=usermanager)
             if note == '':
                 LOG.info('skip empty comment: change: %r', change)
                 continue
@@ -254,13 +253,8 @@ def merge_changelog(ticket_id, changelog, username_map):
     if len(notes):
         yield insert_notes(last_change, notes)
 
-def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_revisions={}, labelmanager=None):
+def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=None, usermanager=None):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
-
-    # trac_user_handle -> gitlab_user_handle
-    username_map = {}
-    for trac_user, email in six.iteritems(usermap):
-        username_map[trac_user] = gitlab.get_user(email).username
 
     for ticket_id, ticket in six.iteritems(trac_tickets):
         LOG.info('migrate #%d: %r', ticket_id, ticket)
@@ -272,9 +266,8 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
         label_set = ticket['labels']
         issue_args['state'] = label_set.get_status_label().title
         issue_args['labels'] = ','.join(label_set.get_label_titles())
-        # Fix user mapping
-        issue_args['author'] = usermap.get(issue_args['author'], default_user)
-        issue_args['assignee'] = usermap.get(issue_args['assignee'], default_user)
+        issue_args['author'] = usermanager.get_email(issue_args['author'])
+        issue_args['assignee'] = usermanager.get_email(issue_args['assignee'])
 
         issue_args['iid'] = ticket_id
 
@@ -293,16 +286,15 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
 
         # Migrate whole changelog
         LOG.info('changelog: %r', ticket['changelog'])
-        for change in merge_changelog(ticket_id, ticket['changelog'], username_map):
+        for change in merge_changelog(ticket_id, ticket['changelog'], usermanager):
             if change['field'] == 'comment':
                 note = format_change_note(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions)
                 if note == '':
                     LOG.info('skip empty comment: change: %r', change)
                     continue
                 note_args = change_comment_kwargs(change, note)
-                # Fix user mapping
-                note_args['author'] = usermap.get(note_args['author'], default_user)
-                note_args['updated_by'] = usermap.get(note_args['updated_by'], default_user)
+                note_args['author'] = usermanager.get_email(note_args['author'])
+                note_args['updated_by'] = usermanager.get_email(note_args['updated_by'])
                 # TODO changelog binary attachments
                 gitlab_note_id = gitlab.comment_issue( issue_id=gitlab_issue_id, binary_attachment=None, **note_args)
                 LOG.info('migrated ticket #%s note: %r', ticket_id, gitlab_note_id)
@@ -380,24 +372,6 @@ def migrate_wiki(trac_wiki, gitlab, output_dir):
         LOG.debug('migrated wiki page %s', title)
 
 
-def generate_password(length=None):
-    alphabet = string.ascii_letters + string.digits + string.punctuation
-    return ''.join(random.choice(alphabet) for _ in range(length or 30))
-
-def create_users(gitlab, usermap, userattrs, gitlab_fallback_user):
-    for email in chain(six.itervalues(usermap), [gitlab_fallback_user]):
-        attrs = {  # set mandatory values to defaults
-            'email': email,
-            'username': email.split('@')[0],
-            'encrypted_password': generate_password(),
-            'two_factor_enabled' : False,
-        }
-
-        attrs.update(userattrs.get(email, {}))
-        gitlab.create_user(**attrs)
-        LOG.info('created GitLab user %r', email)
-        LOG.debug('created GitLab user %r with attributes: %r', email, attrs)
-
 # pylint: disable=too-many-arguments
 def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
             output_wiki_path, output_uploads_path, gitlab_fallback_user,
@@ -410,7 +384,9 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
                                output_uploads_path, create_missing=False)
     LOG.info('estabilished connection to GitLab database')
     # 0. Users
-    #create_users(gitlab, usermap, userattrs, gitlab_fallback_user)
+    create_users = False
+    usermanager = UserManager(gitlab, usermap=usermap, userattrs=userattrs, fallback_user=gitlab_fallback_user, create_users=create_users)
+    usermanager.load_users(trac['authors'])
 
     # XXX
     # if overwite and mode == direct
@@ -430,7 +406,7 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
     labelmanager.create_labels(trac['tickets'])
 
     # 3. Issues
-    migrate_tickets(trac['tickets'], gitlab, gitlab_fallback_user, usermap, svn2git_revisions=svn2git_revisions, labelmanager=labelmanager)
+    migrate_tickets(trac['tickets'], gitlab, svn2git_revisions=svn2git_revisions, labelmanager=labelmanager, usermanager=usermanager)
     # - gitlab bug?
     close_milestones(trac['milestones'], gitlab)
     # Farewell

@@ -183,6 +183,15 @@ class Connection(ConnectionBase):
         M = self.model
         return M.Users.get(M.Users.email == email)
 
+    def user_exists(self, email):
+        M = self.model
+        try:
+            user = M.Users.get(M.Users.email == email)
+        except M.Users.DoesNotExist:
+            user = None
+
+        return user != None
+
     def get_user_id(self, email):
         return self.get_user(email).id
 
