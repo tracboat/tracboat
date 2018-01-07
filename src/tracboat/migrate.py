@@ -165,13 +165,16 @@ def change_comment_kwargs(change, note):
         # 'project'
     }
 
-def ticket_kwargs(ticket_id, ticket):
+def ticket_kwargs(ticket_id, ticket, svn2git_revisions={}):
+
+    description = _wikiconvert(ticket['attributes']['description'], '/issues/', multiline=False,
+        attachments_path='/uploads/issue_%s' % ticket_id,
+        svn2git_revisions=svn2git_revisions
+    )
+
     return {
         'title': ticket['attributes']['summary'],
-        'description': _wikiconvert(ticket['attributes']['description'],
-                                    '/issues/', multiline=False,
-                                    attachments_path = '/uploads/issue_%s' % ticket_id
-        ),
+        'description': description,
         'created_at': ticket['attributes']['time'],
         'updated_at': ticket['attributes']['changetime'],
         # References:
@@ -265,7 +268,7 @@ def migrate_tickets(trac_tickets, gitlab, default_user, usermap=None, svn2git_re
         note_map = {}
         trac_note_id = 1
 
-        issue_args = ticket_kwargs(ticket_id, ticket)
+        issue_args = ticket_kwargs(ticket_id, ticket, svn2git_revisions=svn2git_revisions)
         label_set = ticket['labels']
         issue_args['state'] = label_set.get_status_label().title
         issue_args['labels'] = ','.join(label_set.get_label_titles())
