@@ -324,7 +324,7 @@ Credits
 
 Tracboat was initially created by `Federico Ficarelli <https://github.com/nazavode>`__
 and is now maintained by a pack of great contributors
-(refer to `AUTHORS` file for details).
+(refer to ``AUTHORS`` file for details).
 Initial inspiration and core migration logic comes from the
 `trac-to-gitlab <https://github.com/moimael/trac-to-gitlab>`__ project
 by `Maël Lavault <https://github.com/moimael>`__: this project was born
