@@ -1242,6 +1242,9 @@ class Members(BaseModel):
             (('source_type', 'source'), False),
         )
 
+# Create a reference object to stand in for our as-yet-undefined Tweet model.
+DeferredMergeRequestDiffs = DeferredRelation()
+
 # Possible reference cycle: merge_request_diffs
 class MergeRequests(BaseModel):
     assignee = ForeignKeyField(db_column='assignee_id', null=True, rel_model=Users, to_field='id')
@@ -1256,7 +1259,7 @@ class MergeRequests(BaseModel):
     in_progress_merge_commit_sha = CharField(null=True)
     last_edited_at = DateTimeField(null=True)
     last_edited_by = IntegerField(db_column='last_edited_by_id', null=True)
-    latest_merge_request_diff = ForeignKeyField(db_column='latest_merge_request_diff_id', null=True, rel_model=MergeRequestDiffs, to_field='id')
+    latest_merge_request_diff = ForeignKeyField(db_column='latest_merge_request_diff_id', null=True, rel_model=DeferredMergeRequestDiffs, to_field='id')
     lock_version = IntegerField(null=True)
     merge_commit_sha = CharField(null=True)
     merge_error = TextField(null=True)
@@ -1303,6 +1306,8 @@ class MergeRequestDiffs(BaseModel):
         indexes = (
             (('id', 'merge_request'), False),
         )
+
+DeferredMergeRequestDiffs.set_model(MergeRequestDiffs)
 
 class MergeRequestDiffCommits(BaseModel):
     author_email = TextField(null=True)
