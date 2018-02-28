@@ -1279,7 +1279,7 @@ class MergeRequests(BaseModel):
     title = CharField(index=True, null=True)
     title_html = TextField(null=True)
     updated_at = DateTimeField(null=True)
-    updated_by = ForeignKeyField(db_column='updated_by_id', null=True, rel_model=Users, related_name='users_updated_by_set', to_field='id')
+    updated_by = ForeignKeyField(db_column='updated_by_id', null=True, rel_model=Users, related_name='users_updated_by_set2', to_field='id')
 
     class Meta:
         db_table = 'merge_requests'
