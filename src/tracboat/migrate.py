@@ -131,7 +131,7 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
             return ''
 
         user = usermanager.get_login(change['newvalue'], change['newvalue'])
-        note = '- **Cc** added @%s' % change['newvalue']
+        note = '- **Cc** added @%s' % user
     elif field == 'owner':
         if change['oldvalue'] == '' and change['newvalue'] == '':
             # XXX no idea why such changes even exist
