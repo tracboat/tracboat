@@ -264,6 +264,16 @@ def ticket_state(ticket):
     state = ticket['attributes']['status']
     return status_to_state[state]
 
+def update_timetracking(issue_args, ticket):
+    def convert(hours):
+        seconds = float(hours) * 60 * 60
+        return seconds
+
+    # timelogs
+    issue_args['time_spent'] = convert(ticket['attributes']['totalhours'])
+    # issue.time_estimate
+    issue_args['time_estimate'] = convert(ticket['attributes']['estimatedhours'])
+
 def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=None, usermanager=None):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
 
@@ -283,6 +293,8 @@ def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=Non
         issue_args['labels'] = ','.join(label_set.get_label_titles())
         issue_args['author'] = usermanager.get_email(issue_args['author'])
         issue_args['assignee'] = usermanager.get_email(issue_args['assignee'])
+
+        update_timetracking(issue_args, ticket)
 
         issue_args['iid'] = ticket_id
 
