@@ -124,9 +124,7 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
     field = change['field']
 
     if field == 'comment':
-        note = timetracking_update(change['newvalue'], usermanager)
-        if note is None:
-            note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
+        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
     elif field == 'resolution':
         note = format_fieldchange('Resolution', change, format_converter=format_label)
     elif field == 'priority':
@@ -340,7 +338,9 @@ def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=Non
         LOG.info('changelog: %r', ticket['changelog'])
         for change in merge_changelog(ticket_id, ticket['changelog'], usermanager):
             if change['field'] == 'comment':
-                note = format_change_note(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions, usermanager=usermanager)
+                note = timetracking_update(change['newvalue'], usermanager)
+                if note is None:
+                    note = format_change_note(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions, usermanager=usermanager)
                 if note == '':
                     LOG.info('skip empty comment: change: %r', change)
                     continue
