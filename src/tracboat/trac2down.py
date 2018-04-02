@@ -208,20 +208,6 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
             else:
                 return '![%(path)s](%(upload_path)s)' % d
 
-    timetracking_re = re.compile(r"""
-        \[/hours/(?P<ticket>\d+)\t(?P<hours>[\d.]+)\thours\]\tlogged\tfor\t(?P<login>\S+):\t(?P<message>.+)
-    """, re.X)
-    def timetracking_replace(m):
-        """
-        u'[/hours/59\t2.2\thours]\tlogged\tfor\tsome-user:\t_some\tmessage\there_',
-        """
-        d = m.groupdict()
-
-        # message whitespace is tab separated, change to spaces
-        d['message'] = d['message'].replace("\t", " ")
-
-        return "%(hours)s logged by @%(login)s: %(message)s" % d
-
     a = []
     is_table = False
     for line in text.split('\n'):
@@ -237,7 +223,6 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
             line = reply_re.sub(reply_replace, line)
             line = attachment_re.sub(attachment_replace, line)
             line = commit_re.sub(commit_replace, line)
-            line = timetracking_re.sub(timetracking_replace, line)
 
             # bold
             line = re.sub(r"'''(.*?)'''", r'**\1**', line)

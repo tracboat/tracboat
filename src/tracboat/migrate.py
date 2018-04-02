@@ -92,6 +92,29 @@ def format_fieldchange(field_name, change, value_converter=identity_converter, f
 
     return note
 
+timetracking_re = re.compile(r"""
+    \[/hours/(?P<ticket>\d+)\t(?P<hours>[\d.]+)\thours\]\tlogged\tfor\t(?P<login>\S+):\t''(?P<message>.+)''
+""", re.X)
+def timetracking_update(text, usermanager):
+    """
+    u'[/hours/59\t2.2\thours]\tlogged\tfor\tsome-user:\t_some\tmessage\there_',
+
+    Ideally, it should be real timetracking event:
+    Elan Ruusamäe @glen added 1h 3m of time spent at 2018-04-02 less than a minute ago
+    """
+    m = timetracking_re.match(text)
+    if not m:
+        return None
+
+    d = m.groupdict()
+
+    # message whitespace is tab separated, change to spaces
+    d['message'] = d['message'].replace("\t", " ")
+
+    d['user'] = usermanager.get_login(d['login'], d['login'])
+
+    return "%(hours)s hours logged by @%(user)s: _%(message)s_" % d
+
 def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={}, usermanager=None):
     """
     format "note" for change
@@ -101,7 +124,9 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
     field = change['field']
 
     if field == 'comment':
-        note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
+        note = timetracking_update(change['newvalue'], usermanager)
+        if note is None:
+            note = _wikiconvert(change['newvalue'], '/issues/', multiline=False, note_map=note_map, attachments_path=attachments_path, svn2git_revisions=svn2git_revisions)
     elif field == 'resolution':
         note = format_fieldchange('Resolution', change, format_converter=format_label)
     elif field == 'priority':
@@ -315,7 +340,7 @@ def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=Non
         LOG.info('changelog: %r', ticket['changelog'])
         for change in merge_changelog(ticket_id, ticket['changelog'], usermanager):
             if change['field'] == 'comment':
-                note = format_change_note(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions)
+                note = format_change_note(change, note_map=note_map, issue_id=ticket_id, svn2git_revisions=svn2git_revisions, usermanager=usermanager)
                 if note == '':
                     LOG.info('skip empty comment: change: %r', change)
                     continue
