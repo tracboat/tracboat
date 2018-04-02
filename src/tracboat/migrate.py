@@ -20,6 +20,8 @@ __all__ = ['migrate']
 
 LOG = logging.getLogger(__name__)
 
+STATUS_AS_LABEL = False
+
 def _format_changeset_comment(rex):
     return 'In changeset ' + rex.group(1) + ':\n> ' + rex.group(3).replace('\n', '\n> ')
 
@@ -111,7 +113,11 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
     elif field == 'summary':
         note = format_fieldchange('Summary', change)
     elif field == 'status':
-        note = format_fieldchange('Status', change, value_converter=gitlab_status_label, format_converter=format_label)
+        if STATUS_AS_LABEL:
+            note = format_fieldchange('Status', change, value_converter=gitlab_status_label, format_converter=format_label)
+        else:
+            note = format_fieldchange('Status', change, format_converter=format_emphasis)
+
     elif field == 'version':
         note = format_fieldchange('Version', change, format_converter=format_label)
     elif field == 'description':
@@ -253,6 +259,11 @@ def merge_changelog(ticket_id, changelog, usermanager):
     if len(notes):
         yield insert_notes(last_change, notes)
 
+def ticket_state(ticket):
+    status_to_state = LabelStatus.MAPPING
+    state = ticket['attributes']['status']
+    return status_to_state[state]
+
 def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=None, usermanager=None):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
 
@@ -264,7 +275,11 @@ def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=Non
 
         issue_args = ticket_kwargs(ticket_id, ticket, svn2git_revisions=svn2git_revisions)
         label_set = ticket['labels']
-        issue_args['state'] = label_set.get_status_label().title
+        if STATUS_AS_LABEL:
+            issue_args['state'] = label_set.get_status_label().title
+        else:
+            issue_args['state'] = ticket_state(ticket)
+
         issue_args['labels'] = ','.join(label_set.get_label_titles())
         issue_args['author'] = usermanager.get_email(issue_args['author'])
         issue_args['assignee'] = usermanager.get_email(issue_args['assignee'])

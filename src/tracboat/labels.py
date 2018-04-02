@@ -110,6 +110,14 @@ class LabelManager():
         self.gitlab = gitlab
         self.logger = logger
         self.issues = {}
+        self.classes = [
+            LabelPriority,
+            LabelResolution,
+            LabelVersion,
+            LabelComponent,
+            LabelType,
+#            LabelStatus,
+        ]
 
     def collect_labels(self, tickets):
         """
@@ -145,16 +153,8 @@ class LabelManager():
         """
 
         labels = LabelSet()
-        classes = [
-            LabelPriority,
-            LabelResolution,
-            LabelVersion,
-            LabelComponent,
-            LabelType,
-            LabelStatus,
-        ]
 
-        for cls in classes:
+        for cls in self.classes:
             gen = self.factory(cls, ticket)
             labels.add_many(gen)
 
