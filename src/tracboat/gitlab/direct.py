@@ -304,6 +304,17 @@ class Connection(ConnectionBase):
             )
             label_link.save()
 
+        # 4. timetracking
+        if kwargs['time_spent']:
+            M.Timelogs.create(
+                created_at=issue.created_at,
+                issue=issue.id,
+#                spent_at=None,
+                time_spent=kwargs['time_spent'],
+                updated_at=issue.created_at,
+                user=issue.author
+            ).save()
+
         return issue.id
 
     def comment_issue(self, issue_id=None, binary_attachment=None, **kwargs):
