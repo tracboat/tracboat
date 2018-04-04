@@ -295,7 +295,8 @@ def update_timetracking(issue_args, ticket):
     # timelogs
     issue_args['time_spent'] = convert(ticket['attributes']['totalhours'])
     # issue.time_estimate
-    issue_args['time_estimate'] = convert(ticket['attributes']['estimatedhours'])
+    if 'estimatedhours' in ticket['attributes']:
+        issue_args['time_estimate'] = convert(ticket['attributes']['estimatedhours'])
 
 def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=None, usermanager=None):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
