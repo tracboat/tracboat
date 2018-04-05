@@ -42,10 +42,11 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
     text = re.sub(r'(?m)^===\s+(.*?)\s+===$', r'### \1', text)
     text = re.sub(r'(?m)^==\s+(.*?)\s+==$', r'## \1', text)
     text = re.sub(r'(?m)^=\s+(.*?)\s+=$', r'# \1', text)
-    text = re.sub(r'^             * ', r'****', text)
-    text = re.sub(r'^         * ', r'***', text)
-    text = re.sub(r'^     * ', r'**', text)
-    text = re.sub(r'^ * ', r'*', text)
+    # what these are supposed to do? space + unlimited space? forgotten \* escape?
+#    text = re.sub(r'^             * ', r'****', text)
+#    text = re.sub(r'^         * ', r'***', text)
+#    text = re.sub(r'^     * ', r'**', text)
+#    text = re.sub(r'^ * ', r'*', text)
     text = re.sub(r'^ \d+. ', r'1.', text)
 
     # https://stackoverflow.com/a/16891418/2314626
