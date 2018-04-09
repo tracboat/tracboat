@@ -143,10 +143,10 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         return "Replying to [%(username)s](%(link)s):" % d
 
     commit_re = re.compile(r"""
-        \[(?P<revision>\d+)\] # revision in brackets
+        \[(?P<revision>\d+)(?P<subtrac>/[^/]+)?\] # revision in brackets
         | r(?P<revision2>\d+) # revision with r-prefix
         | \[(?P<rev1>\d+)-(?P<rev2>\d+)\] # revision range
-        | changeset:(?P<changeset>\d+)
+        | changeset:"?(?P<changeset>\d+)"?
     """, re.X)
     def commit_replace(m):
         """
@@ -154,6 +154,7 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         [36859], [36860]
         Changesets [36872-36874]
         changeset:38934
+        [changeset:"65152"]
         """
         d = m.groupdict()
         d[0] = str(m.group(0))
