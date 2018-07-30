@@ -332,21 +332,6 @@ from heavy cleanup and refactoring of that original code, so this is why
 this spinoff inherited its
 `GPLv3 <https://www.gnu.org/licenses/gpl-3.0.en.html>`__ license.
 
-Changes
--------
-
-0.2.0a0 *(unreleased)*
-~~~~~~~~~~~~~~~~~~~~~~
-
-Added
-^^^^^
-
--  Project import
--  Migration to mock GitLab on file system
--  Creation of missing GitLab users, namespaces and projects
--  Custom user attributes (#17)
-
-
 .. |build-status| image:: https://travis-ci.org/nazavode/tracboat.svg?branch=master
     :target: https://travis-ci.org/nazavode/tracboat
     :alt: Build status
