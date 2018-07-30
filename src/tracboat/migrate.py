@@ -113,6 +113,28 @@ def ticket_components(ticket):
     components = ticket['attributes']['component'].split(',')
     return {'comp:{}'.format(comp.strip()) for comp in components}
 
+def ticket_note_labels(ticket):
+    labels = set()
+
+    for change in ticket['changelog']:
+        if not change['field'] in ['resolution', 'status']:
+            continue
+
+        if change['field'] == 'resolution':
+            if change['newvalue'] == '':
+                label = gitlab_resolution_label(change['oldvalue'])
+                labels.add(label)
+            else:
+                label = gitlab_resolution_label(change['newvalue'])
+                labels.add(label)
+
+        if change['field'] == 'status':
+            label = gitlab_status_label(change['oldvalue'])
+            labels.add(label)
+            label = gitlab_status_label(change['newvalue'])
+            labels.add(label)
+
+    return labels
 
 def ticket_type(ticket):
     ttype = ticket['attributes']['type']
@@ -180,9 +202,10 @@ def ticket_kwargs(ticket):
     component_labels = ticket_components(ticket)
     type_labels = ticket_type(ticket)
     state, state_labels = ticket_state(ticket)
+    note_labels = ticket_note_labels(ticket)
 
     labels = priority_labels | resolution_labels | version_labels | \
-        component_labels | type_labels | state_labels
+        component_labels | type_labels | state_labels | note_labels
 
     return {
         'title': ticket['attributes']['summary'],
