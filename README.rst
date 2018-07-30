@@ -115,7 +115,10 @@ Migrate to GitLab
     [tracboat]
     from-export-file = "myexportedtracproject.json"
     gitlab-project-name = "migrated/myproject"
-    gitlab-version = "9.0.0"
+    # see src/tracboat/gitlab/model for models present
+    # you can use older model, even if most recent not present yet
+    # for example 10.6 and 10.7 did not need model updates (can work with 10.5 models)
+    gitlab_version = "10.5"
     gitlab_db_password = "Բարեւ աշխարհ"
     $ tracboat --config-file=awesomemigration.toml migrate
 
