@@ -305,7 +305,7 @@ class Connection(ConnectionBase):
             label_link.save()
 
         # 4. timetracking
-        if kwargs['time_spent']:
+        if 'time_spent' in kwargs and kwargs['time_spent']:
             M.Timelogs.create(
                 created_at=issue.created_at,
                 issue=issue.id,

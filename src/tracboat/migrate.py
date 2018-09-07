@@ -293,7 +293,8 @@ def update_timetracking(issue_args, ticket):
         return seconds
 
     # timelogs
-    issue_args['time_spent'] = convert(ticket['attributes']['totalhours'])
+    if 'totalhours' in ticket['attributes']:
+        issue_args['time_spent'] = convert(ticket['attributes']['totalhours'])
     # issue.time_estimate
     if 'estimatedhours' in ticket['attributes']:
         issue_args['time_estimate'] = convert(ticket['attributes']['estimatedhours'])
