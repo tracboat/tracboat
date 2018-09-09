@@ -358,7 +358,14 @@ class Connection(ConnectionBase):
     def save_attachment(self, path, binary):
         filename = os.path.join(self.uploads_path, self.project_qualname, path)
         if os.path.isfile(filename):
-            raise Exception("file already exists: %r" % filename)
+            with open(filename, "rb") as bin_f:
+                file_content = bin_f.read()
+                bin_f.close()
+
+                if binary == file_content:
+                    return
+
+                raise Exception("file already exists: %r" % filename)
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
