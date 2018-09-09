@@ -3,7 +3,7 @@
 import os
 import shutil
 import logging
-import codecs
+import glob
 from datetime import datetime
 
 from . import ConnectionBase
@@ -79,10 +79,12 @@ class Connection(ConnectionBase):
         self.model.Labels.create_table(fail_silently=True)
         self.model.Users.create_table(fail_silently=True)
         self.model.Issues.create_table(fail_silently=True)
+        self.model.IssueAssignees.create_table(fail_silently=True)
         self.model.LabelLinks.create_table(fail_silently=True)
         self.model.Notes.create_table(fail_silently=True)
         if create_missing and not self._get_project(self.project_name, self.project_namespace):
             LOG.debug("project %r doesn't exist, creating...", project_name)
+            raise ValueError('CREATE PROJECT IS BROKEN: %s:' % 'https://github.com/nazavode/tracboat/issues/37')
             # TODO check for existing namespace
             if self.project_namespace:
                 db_namespace = \
@@ -101,10 +103,10 @@ class Connection(ConnectionBase):
             LOG.debug("project %r created in namespace %r",
                       self.project_name, self.project_namespace)
 
-    def _get_project_id(self, project_name):
-        project = self._get_project(project_name)
+    def _get_project_id(self):
+        project = self._get_project(self.project_name, self.project_namespace)
         if not project:
-            raise ValueError("Project {!r} not found".format(project_name))
+            raise ValueError("Project {!r} not found".format(self.project_qualname))
         return project["id"]
 
     def _get_project(self, p_name, p_namespace=None):
@@ -122,14 +124,18 @@ class Connection(ConnectionBase):
         except M.Projects.DoesNotExist:
             return None
 
-    def clear_issues(self):
+    def clear_labels(self):
         M = self.model
         # Delete all the uses of the labels of the project.
+        # XXX labels could be used by merge requests as well!!!
         for label in M.Labels.select().where(M.Labels.project == self.project_id):
             M.LabelLinks.delete().where(M.LabelLinks.label == label.id).execute()
             # You probably do not want to delete the labels themselves, otherwise you'd need to
             # set their colour every time when you re-run the migration.
-            # label.delete_instance()
+            label.delete_instance()
+
+    def clear_issues(self):
+        M = self.model
         # Delete issues and everything that goes with them...
         for issue in M.Issues.select().where(M.Issues.project == self.project_id):
             for note in M.Notes.select().where((M.Notes.project == self.project_id) &
@@ -146,6 +152,13 @@ class Connection(ConnectionBase):
                                     (M.Events.target_type == 'Issue') &
                                     (M.Events.target == issue.id)).execute()
             issue.delete_instance()
+
+        # attachments from issue comments
+        for directory in glob.glob(os.path.join(self.uploads_path, self.project_qualname, 'issue_*')):
+            LOG.info("rm -rf %r" % directory)
+            shutil.rmtree(directory, ignore_errors=True)
+
+        # XXX: method is called "Clear issues" but clears milestones?!?!
         M.Milestones.delete().where(
             M.Milestones.project == self.project_id).execute()
 
@@ -160,15 +173,27 @@ class Connection(ConnectionBase):
             return None
 
     def get_project(self):
-        return self._get_project(self.project_name)
+        return self._get_project(self.project_name, self.project_namespace)
 
     def get_milestone_id(self, milestone_name):
         milestone = self.get_milestone(milestone_name)
         return milestone["id"] if milestone else None
 
-    def get_user_id(self, email):
+    def get_user(self, email):
         M = self.model
-        return M.Users.get(M.Users.email == email).id
+        return M.Users.get(M.Users.email == email)
+
+    def user_exists(self, email):
+        M = self.model
+        try:
+            user = M.Users.get(M.Users.email == email)
+        except M.Users.DoesNotExist:
+            user = None
+
+        return user != None
+
+    def get_user_id(self, email):
+        return self.get_user(email).id
 
     # def get_issues_iid(self):
     #     M = self.model
@@ -196,6 +221,7 @@ class Connection(ConnectionBase):
         kwargs['project'] = self.project_id
         kwargs['created_at'] = datetime.now()
         kwargs['updated_at'] = datetime.now()
+#        LOG.info("CREATE MILESTONE: %r" % kwargs)
         try:
             milestone = M.Milestones.get(
                 (M.Milestones.title == kwargs['title']) &
@@ -204,13 +230,38 @@ class Connection(ConnectionBase):
             #     if k not in ('id', 'iid'):
             #         existing._data[k] = new_milestone._data[k]
             # new_milestone = existing
+#            LOG.info("MILESTONE exists")
         except M.Milestones.DoesNotExist:
             milestone = M.Milestones.create(**kwargs)
+            # XXX hack https://github.com/nazavode/tracboat/issues/23
+            milestone.iid = milestone.id
             milestone.save()
             # new_milestone.iid = M.Milestones.select().where(
             #     M.Milestones.project == self.project_id).aggregate(
             #         peewee.fn.Count(M.Milestones.id)) + 1
+            LOG.info("MILESTONE created: %r" % milestone)
         return milestone.id
+
+    def close_milestone(self, milestone_id):
+        M = self.model
+        milestone = M.Milestones.get(M.Milestones.id == milestone_id)
+        milestone.state = 'closed'
+        milestone.save()
+
+    def create_label(self, label):
+        M = self.model
+        try:
+            M.Labels.get((M.Labels.title == label.title) & (M.Labels.project == self.project_id))
+        except M.Labels.DoesNotExist:
+            description = "%s label from Trac" % label.TYPE
+            M.Labels.create(
+                title=label.title,
+                color=label.COLOR,
+                project=self.project_id,
+                description=description,
+                description_html=description,
+                type='ProjectLabel',
+            ).save()
 
     def create_issue(self, **kwargs):
         M = self.model
@@ -236,22 +287,14 @@ class Connection(ConnectionBase):
             updated_at=issue.created_at
         )
         event.save()
-        # 3. Labels
-        # TODO move label creation in a separate method
+
+        # save issue assignee
+        # need to use .raw, because primary_key = False
+        M.IssueAssignees.raw("insert into issue_assignees (issue_id, user_id) values (%s, %s)", issue.id, issue.assignee).execute()
+
+        # 3. Label links
         for title in issue.labels.split(','):
-            try:
-                label = M.Labels.get((M.Labels.title == title) &
-                                     (M.Labels.project == self.project_id))
-            except M.Labels.DoesNotExist:
-                label = M.Labels.create(
-                    title=title,
-                    color='#0000FF',
-                    project=issue.project,
-                    type='ProjectLabel',
-                    created_at=issue.created_at,
-                    update_at=issue.created_at
-                )
-                label.save()
+            label = M.Labels.get((M.Labels.title == title) & (M.Labels.project == self.project_id))
             label_link = M.LabelLinks.create(
                 label=label.id,
                 target=issue.id,
@@ -260,6 +303,18 @@ class Connection(ConnectionBase):
                 update_at=issue.created_at
             )
             label_link.save()
+
+        # 4. timetracking
+        if kwargs['time_spent']:
+            M.Timelogs.create(
+                created_at=issue.created_at,
+                issue=issue.id,
+#                spent_at=None,
+                time_spent=kwargs['time_spent'],
+                updated_at=issue.created_at,
+                user=issue.author
+            ).save()
+
         return issue.id
 
     def comment_issue(self, issue_id=None, binary_attachment=None, **kwargs):
@@ -300,12 +355,12 @@ class Connection(ConnectionBase):
                 bin_f.write(binary_attachment)
         return note.id
 
-    def save_wiki_attachment(self, path, binary):
+    def save_attachment(self, path, binary):
         filename = os.path.join(self.uploads_path, self.project_qualname, path)
         if os.path.isfile(filename):
             raise Exception("file already exists: %r" % filename)
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        with codecs.open(filename, "wb", encoding='utf-8') as out_f:
-            out_f.write(binary)
+        with open(filename, "wb") as bin_f:
+            bin_f.write(binary)

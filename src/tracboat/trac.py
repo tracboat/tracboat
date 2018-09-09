@@ -25,7 +25,8 @@ def _authors_collect(wiki=None, tickets=None):
         [page['attributes']['author'] for page in six.itervalues(wiki)] +
         [ticket['attributes']['reporter'] for ticket in six.itervalues(tickets)] +
         [ticket['attributes']['owner'] for ticket in six.itervalues(tickets)] +
-        [change['author'] for ticket in six.itervalues(tickets) for change in ticket['changelog']]
+        [change['author'] for ticket in six.itervalues(tickets) for change in ticket['changelog']] +
+        [change['newvalue'] for ticket in six.itervalues(tickets) for change in ticket['changelog'] if change['field'] in ['cc', 'owner']]
     ))
 
 
@@ -37,6 +38,8 @@ def ticket_get_attributes(source, ticket_id):
 
 def ticket_get_changelog(source, ticket_id):
     LOG.debug('ticket_get_changelog of ticket #%s', ticket_id)
+    # the results are ordered by time,permanent,author tuple
+    # https://trac.edgewall.org/browser/tags/trac-1.0.15/trac/ticket/model.py#L383
     return [
         {
             'time': c[0],

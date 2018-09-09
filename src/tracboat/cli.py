@@ -344,6 +344,7 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
     # Crawl files in increasing priority (the latter overrides)
     usermap = {}
     userattrs = {}
+    svn2git_revisions = {}
     for filename in ufiles:
         conf = toml.load(filename)
         if 'tracboat' in conf:
@@ -353,6 +354,9 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
             if 'users' in conf['tracboat']:
                 LOG.info('updating user attributes with info from %r', filename)
                 userattrs.update(conf['tracboat']['users'])
+            if 'svn2git_revisions' in conf['tracboat']:
+                import shelve
+                svn2git_revisions = shelve.open(conf['tracboat']['svn2git_revisions'], 'r')
     # Add extra mappings from command line '--umap' args
     usermap.update({m[0]: m[1] for m in umap if m and m[0] and m[1]})
     # Look for default user attributes
@@ -394,13 +398,13 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         db_connector = peewee.PostgresqlDatabase(gitlab_db_name, user=gitlab_db_user,
                                                  password=gitlab_db_password, host=gitlab_db_path)
     # 3. Migrate
-    LOG.debug('Trac: %s', _sanitize_url(trac_uri))
-    LOG.debug('GitLab project: %s', gitlab_project_name)
-    LOG.debug('GitLab version: %s', gitlab_version)
-    LOG.debug('GitLab db path: %s', gitlab_db_path)
-    LOG.debug('GitLab db name: %s', gitlab_db_name)
-    LOG.debug('GitLab uploads: %s', gitlab_uploads_path)
-    LOG.debug('GitLab fallback user: %s', fallback_user)
+    LOG.info('Trac: %s', _sanitize_url(trac_uri))
+    LOG.info('GitLab project: %s', gitlab_project_name)
+    LOG.info('GitLab version: %s', gitlab_version)
+    LOG.info('GitLab db path: %s', gitlab_db_path)
+    LOG.info('GitLab db name: %s', gitlab_db_name)
+    LOG.info('GitLab uploads: %s', gitlab_uploads_path)
+    LOG.info('GitLab fallback user: %s', fallback_user)
     trac_migrate.migrate(
         trac=project,
         gitlab_project_name=gitlab_project_name,
@@ -411,6 +415,7 @@ def migrate(ctx, umap, umap_file, fallback_user, trac_uri, ssl_verify,
         gitlab_fallback_user=fallback_user,
         usermap=usermap,
         userattrs=userattrs,
+        svn2git_revisions=svn2git_revisions,
     )
     LOG.info('migration done.')
 
