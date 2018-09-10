@@ -115,12 +115,56 @@ Migrate to GitLab
     [tracboat]
     from-export-file = "myexportedtracproject.json"
     gitlab-project-name = "migrated/myproject"
-    # see src/tracboat/gitlab/model for models present
-    # you can use older model, even if most recent not present yet
-    # for example 10.6 and 10.7 did not need model updates (can work with 10.5 models)
+    # see below to choose the right version
     gitlab_version = "10.5"
     gitlab_db_password = "Բարեւ աշխարհ"
     $ tracboat --config-file=awesomemigration.toml migrate
+
+GitLab version compatibility
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Not all versions of GitLab need a specific model. You can refer to the table below to choose the correct model for your GitLab version.
+
++----------------+---------------------------+
+| Tracboat model | Compatible GitLab version |
++================+===========================+
+| 11.0           | 11.0, 11.1, 11.2          |
++----------------+---------------------------+
+| 10.5           | 10.5, 10.6, 10.7, 10.8    |
++----------------+---------------------------+
+| 10.4           | 10.4                      |
++----------------+---------------------------+
+| 10.3           | 10.3                      |
++----------------+---------------------------+
+| 10.2           | 10.2                      |
++----------------+---------------------------+
+| 9.5            | 9.5                       |
++----------------+---------------------------+
+| 9.4            | 9.4                       |
++----------------+---------------------------+
+| 9.3            | 9.3                       |
++----------------+---------------------------+
+| 9.0            | 9.0                       |
++----------------+---------------------------+
+| 8.17           | 8.17                      |
++----------------+---------------------------+
+| 8.16           | 8.16                      |
++----------------+---------------------------+
+| 8.15           | 8.15                      |
++----------------+---------------------------+
+| 8.13           | 8.13                      |
++----------------+---------------------------+
+| 8.7            | 8.7                       |
++----------------+---------------------------+
+| 8.5            | 8.5                       |
++----------------+---------------------------+
+| 8.4            | 8.4                       |
++----------------+---------------------------+
+
+If your GitLab version is not in the table, it has not been tested yet.
+Try with the first model lower than your version, and report any issue you encounter.
+
+e.g. for GitLab 9.2, try 9.0 model
 
 Migrating users
 ~~~~~~~~~~~~~~~
