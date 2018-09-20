@@ -48,7 +48,7 @@ class UserManager():
             return
 
         if not self.create_users:
-            raise Exception, 'User creation disabled, no account for %r' % email
+            raise Exception('User creation disabled, no account for %r' % email)
 
         # set mandatory values to defaults
         attrs = {
