@@ -202,7 +202,7 @@ def cli(ctx, config_file, verbose):
         level = logging.DEBUG
     else:  # < 1
         level = logging.ERROR
-    logging.basicConfig(level=level, format='%(levelname)-5s %(name)s: %(message)s')
+    logging.basicConfig(level=level, format='%(asctime)s %(levelname)-5s %(name)s: %(message)s')
     # Pass configuration to subcommands
     ctx.obj['verbose'] = verbose
     ctx.obj['config-file'] = config_file
