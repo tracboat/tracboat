@@ -381,14 +381,7 @@ def migrate_milestones(trac_milestones, gitlab):
         milestone_args = milestone_kwargs(milestone)
         LOG.info('migrate milestone %r', milestone_args)
         gitlab_milestone_id = gitlab.create_milestone(**milestone_args)
-        # => #<Milestone id: 2456,
-#        title: "v1", project_id: 166, description: "", 
-#due_date: nil, created_at: "2017-04-21 22:45:30", 
-#updated_at: "2017-04-21 22:45:30", state: "active", 
-#iid: 1, title_html: "v1", description_html: "", 
-#start_date: nil>
         LOG.info('migrated milestone %s -> %s', title, gitlab_milestone_id)
-
 
 def migrate_wiki(trac_wiki, gitlab, output_dir):
     for title, wiki in six.iteritems(trac_wiki):
@@ -444,9 +437,9 @@ def migrate(trac, gitlab_project_name, gitlab_version, gitlab_db_connector,
 
     # XXX
     # if overwite and mode == direct
-    # XXX: this clears also milestones
     # XXX: make configurable
     gitlab.clear_issues()
+    gitlab.clear_milestones()
 #    gitlab.clear_labels()
 
     # 1. Wiki
