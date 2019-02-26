@@ -28,6 +28,3 @@ mock = "*"
 # the README.rst rendering in PyPI
 docutils = "*"
 Pygments = "*"
-
-[requires]
-python_version = "2.7"
