@@ -4,6 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+peewee = "*"
+psycopg2 = "*"
+six = "*"
+click = "*"
+toml = "*"
+pymongo = "*"
 
 [dev-packages]
 
