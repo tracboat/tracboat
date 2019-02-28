@@ -22,7 +22,7 @@ import toml
 from bson import json_util
 from six.moves.urllib import parse as urllib  # pylint: disable=import-error
 
-from tracboat.dataloader import DataLoader
+from .dataloader import DataLoader
 from . import VERSION
 from . import migrate as trac_migrate
 from . import trac
