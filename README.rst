@@ -113,8 +113,8 @@ Migrate to GitLab
 
     $ cat awesomemigration.toml
     [tracboat]
-    from-export-file = "myexportedtracproject.json"
-    gitlab-project-name = "migrated/myproject"
+    from_export_file = "myexportedtracproject.json"
+    gitlab_project_name = "migrated/myproject"
     # see below to choose the right version
     gitlab_version = "10.5"
     gitlab_db_password = "Բարեւ աշխարհ"
