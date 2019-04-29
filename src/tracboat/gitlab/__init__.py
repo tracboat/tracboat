@@ -66,6 +66,14 @@ class ConnectionBase(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
+    def clear_labels(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def clear_milestones(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
     def get_milestone(self, milestone_name):
         raise NotImplementedError()
 

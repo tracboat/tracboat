@@ -134,6 +134,12 @@ class Connection(ConnectionBase):
             # set their colour every time when you re-run the migration.
             label.delete_instance()
 
+    def clear_milestones(self):
+        M = self.model
+
+        M.Milestones.delete().where(
+            M.Milestones.project == self.project_id).execute()
+
     def clear_issues(self):
         M = self.model
         # Delete issues and everything that goes with them...
@@ -157,10 +163,6 @@ class Connection(ConnectionBase):
         for directory in glob.glob(os.path.join(self.uploads_path, self.project_qualname, 'issue_*')):
             LOG.info("rm -rf %r" % directory)
             shutil.rmtree(directory, ignore_errors=True)
-
-        # XXX: method is called "Clear issues" but clears milestones?!?!
-        M.Milestones.delete().where(
-            M.Milestones.project == self.project_id).execute()
 
     def get_milestone(self, milestone_name):
         M = self.model
