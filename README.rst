@@ -40,6 +40,15 @@ If you want to **install from source**, doing it in a ``virtualenv`` is
     $ pip install -r requirements/dist.txt
     $ pip install -e .
 
+Alternatively with **pipenv**
+
+.. code:: shell
+
+    $ cd tracboat
+    $ pip install pipenv
+    $ pipenv install -e .
+    $ pipenv run tracboat
+
 Dependencies
 ------------
 
