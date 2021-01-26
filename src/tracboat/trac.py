@@ -54,6 +54,16 @@ def ticket_get_changelog(source, ticket_id):
 
 
 def ticket_get_attachments(source, ticket_id):
+
+    def _get_attachment(source, ticket_id, filename):
+        LOG.debug("Retriving attachment '{}' on ticket {}".format(filename, ticket_id))
+        try:
+            return source.ticket.getAttachment(ticket_id, filename).data
+        except Exception as ex:
+            error = "Could not retrive attachment '{}' on ticket {}, error: {}".format(filename, ticket_id, ex)
+            LOG.error(error)
+            return error
+    
     LOG.debug('ticket_get_attachments of ticket #%s', ticket_id)
     return {
         meta[0]: {
@@ -64,7 +74,7 @@ def ticket_get_attachments(source, ticket_id):
                 'time': meta[3],
                 'author': meta[4],
             },
-            'data': _safe_retrieve_data(source.ticket.getAttachment(ticket_id, meta[0]).data)
+            'data': _safe_retrieve_data(_get_attachment(source, ticket_id, meta[0]))
         }
         for meta in source.ticket.listAttachments(ticket_id)
     }
