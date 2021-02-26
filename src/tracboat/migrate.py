@@ -301,7 +301,8 @@ def update_timetracking(issue_args, ticket):
 
 def migrate_tickets(trac_tickets, gitlab, svn2git_revisions={}, labelmanager=None, usermanager=None):
     LOG.info('MIGRATING %d tickets to issues', len(trac_tickets))
-
+    if len(trac_tickets) == 0:
+        return
     for ticket_id, ticket in six.iteritems(trac_tickets):
         LOG.info('migrate #%d: %r', ticket_id, ticket)
         # trac note_id -> gitlab note_id
@@ -384,6 +385,8 @@ def migrate_milestones(trac_milestones, gitlab):
         LOG.info('migrated milestone %s -> %s', title, gitlab_milestone_id)
 
 def migrate_wiki(trac_wiki, gitlab, output_dir):
+    if len(trac_wiki) == 0:
+        return
     for title, wiki in six.iteritems(trac_wiki):
         page = wiki['page']
         attachments = wiki['attachments']
