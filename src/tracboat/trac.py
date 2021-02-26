@@ -40,17 +40,22 @@ def ticket_get_changelog(source, ticket_id):
     LOG.debug('ticket_get_changelog of ticket #%s', ticket_id)
     # the results are ordered by time,permanent,author tuple
     # https://trac.edgewall.org/browser/tags/trac-1.0.15/trac/ticket/model.py#L383
-    return [
-        {
-            'time': c[0],
-            'author': c[1],
-            'field': c[2],
-            'oldvalue': c[3],
-            'newvalue': c[4],
-            'permanent': bool(c[5])
-        }
-        for c in source.ticket.changeLog(ticket_id)
-    ]
+    try:
+        return [
+            {
+                'time': c[0],
+                'author': c[1],
+                'field': c[2],
+                'oldvalue': c[3],
+                'newvalue': c[4],
+                'permanent': bool(c[5])
+            }
+            for c in source.ticket.changeLog(ticket_id)
+        ]
+    except Exception as ex:
+        LOG.error("Could not retrive changelog on ticket {}, error: {}".format(ticket_id, ex))
+        return []
+
 
 
 def ticket_get_attachments(source, ticket_id):
