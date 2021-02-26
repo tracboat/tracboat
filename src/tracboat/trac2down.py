@@ -36,12 +36,12 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
     if multilines:
         text = re.sub(r'^\S[^\n]+([^=-_|])\n([^\s`*0-9#=->-_|])', r'\1 \2', text)
 
-    text = re.sub(r'(?m)^======\s+(.*?)\s+======$', r'###### \1', text)
-    text = re.sub(r'(?m)^=====\s+(.*?)\s+=====$', r'##### \1', text)
-    text = re.sub(r'(?m)^====\s+(.*?)\s+====$', r'#### \1', text)
-    text = re.sub(r'(?m)^===\s+(.*?)\s+===$', r'### \1', text)
-    text = re.sub(r'(?m)^==\s+(.*?)\s+==$', r'## \1', text)
-    text = re.sub(r'(?m)^=\s+(.*?)\s+=$', r'# \1', text)
+    text = re.sub(r'(?m)^======\s+(.*?)(\s+======)*$', r'###### \1', text)
+    text = re.sub(r'(?m)^=====\s+(.*?)(\s+=====)*$', r'##### \1', text)
+    text = re.sub(r'(?m)^====\s+(.*?)(\s+====)*$', r'#### \1', text)
+    text = re.sub(r'(?m)^===\s+(.*?)(\s+===)*$', r'### \1', text)
+    text = re.sub(r'(?m)^==\s+(.*?)(\s+==)*$', r'## \1', text)
+    text = re.sub(r'(?m)^=\s+(.*?)(\s+=)*$', r'# \1', text)
     # what these are supposed to do? space + unlimited space? forgotten \* escape?
 #    text = re.sub(r'^             * ', r'****', text)
 #    text = re.sub(r'^         * ', r'***', text)
@@ -216,6 +216,8 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         # not blockquote?
         if not line.startswith('    '):
             line = re.sub(r'\[(https?://[^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](\1)', line)
+            line = re.sub(r'\[(?<!!|wiki:)([^\]]+)]', r'[\1](\1)', line) # [WikiName] format
+            line = re.sub(r'\[(?<!!|wiki:)([^ \]]+) ([^\]]+)\]', r'[\2](\1)', line) # [WikiName Friendly name] format
             line = re.sub(r'\[wiki:([^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](%s/\1)' % os.path.relpath('/wikis/', base_path), line)
             line = re.sub(r'\[wiki:([^\s\[\]]+)\]', r'[\1](\1)', line)
             line = re.sub(r'\!(([A-Z][a-z0-9]+){2,})', r'\1', line)
