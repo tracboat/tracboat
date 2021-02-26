@@ -53,6 +53,7 @@ USER_DEFAULTS = {
     'skype': '',
     'twitter': '',
     'website_url': '',
+    'projects_limit': 0,
 }
 
 
