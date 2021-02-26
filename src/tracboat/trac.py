@@ -79,7 +79,7 @@ def ticket_get_attachments(source, ticket_id):
                 'time': meta[3],
                 'author': meta[4],
             },
-            'data': _safe_retrieve_data(_get_attachment(source, ticket_id, meta[0]))
+            'data': _safe_retrieve_data(_get_attachment(source, ticket_id, meta[0].encode('utf-8')))
         }
         for meta in source.ticket.listAttachments(ticket_id)
     }
