@@ -54,6 +54,7 @@ class UserManager():
         attrs = {
             'email': email,
             'username': email.split('@')[0],
+            'name': email.split('@')[0],
             'encrypted_password': self.generate_password(),
             'two_factor_enabled' : False,
         }
