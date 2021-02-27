@@ -53,6 +53,7 @@ USER_DEFAULTS = {
     'skype': '',
     'twitter': '',
     'website_url': '',
+    'projects_limit': 0,
 }
 
 
@@ -359,6 +360,7 @@ class Connection(ConnectionBase):
 
     def save_attachment(self, path, binary):
         filename = os.path.join(self.uploads_path, self.project_qualname, path)
+        filename = filename.encode('ascii', 'ignore')
         if os.path.isfile(filename):
             with open(filename, "rb") as bin_f:
                 file_content = bin_f.read()

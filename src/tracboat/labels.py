@@ -128,6 +128,8 @@ class LabelManager():
         self.logger.info('Labels: process %d tickets', len(tickets))
         # labels of all issues
         labels = LabelSet()
+        if len(tickets) == 0:
+            return labels
         for ticket_id, ticket in six.iteritems(tickets):
             if not 'labels' in ticket:
                 ticket['labels'] = self.ticket_labels(ticket)

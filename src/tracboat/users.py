@@ -54,11 +54,12 @@ class UserManager():
         attrs = {
             'email': email,
             'username': email.split('@')[0],
+            'name': email.split('@')[0],
             'encrypted_password': self.generate_password(),
             'two_factor_enabled' : False,
         }
 
-        attrs.update(userattrs.get(email, {}))
+        attrs.update(self.userattrs.get(email, {}))
         self.gitlab.create_user(**attrs)
         self.logger.info('Created GitLab user %r', email)
         self.logger.debug('Created GitLab user %r with attributes: %r', email, attrs)
