@@ -54,6 +54,8 @@ USER_DEFAULTS = {
     'twitter': '',
     'website_url': '',
     'projects_limit': 0,
+    'state': 'active',
+    'created_at': datetime.now(),
 }
 
 
