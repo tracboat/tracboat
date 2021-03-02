@@ -155,12 +155,21 @@ def format_change_note(change, issue_id=None, note_map={}, svn2git_revisions={},
         # /var/opt/gitlab/gitlab-rails/uploads/glen/photoproject/f38feb8a3dc4c5bcabdc41ccc5894ac3
         note = '- **Attachment** [%s](%s/%s) added' % (change['newvalue'], attachments_path, change['newvalue'])
     elif field == 'cc':
-        if change['newvalue'] == '':
+        note = ''
+        for value in change['newvalue'].split(','):
+            value = value.strip()
+            if value == '':
+                continue
+
+            user = usermanager.get_login(value, value)
+            if not note:
+                note = '- **Cc** added @%s' % user
+            else:
+                note += ', @%s' % user
+        
+        if not note:
             LOG.error('Unexpected empty value for %s' % field)
             return ''
-
-        user = usermanager.get_login(change['newvalue'], change['newvalue'])
-        note = '- **Cc** added @%s' % user
     elif field == 'owner':
         if change['oldvalue'] == '' and change['newvalue'] == '':
             # XXX no idea why such changes even exist
