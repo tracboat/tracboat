@@ -34,6 +34,8 @@ NAMESPACE_DEFAULTS = {
     'description': 'imported',
     'request_access_enabled': True,
     'visibility_level': 0,
+    'created_at': datetime.now(),
+    'updated_at': datetime.now(),
 }
 
 
@@ -54,6 +56,8 @@ USER_DEFAULTS = {
     'twitter': '',
     'website_url': '',
     'projects_limit': 0,
+    'state': 'active',
+    'created_at': datetime.now(),
 }
 
 
@@ -204,6 +208,13 @@ class Connection(ConnectionBase):
     #         M.Issues.project == self.project_id).aggregate(
     #             peewee.fn.Count(M.Issues.id)) + 1
 
+    def create_namespace(self, name, path, user_id):
+        M = self.model
+        try:
+            M.Namespaces.get(M.Namespaces.name == name)
+        except M.Namespaces.DoesNotExist:
+            M.Namespaces.create(name=name, path=path, owner=user_id, **NAMESPACE_DEFAULTS)
+
     def create_user(self, email, **kwargs):
         M = self.model
         try:
@@ -216,6 +227,7 @@ class Connection(ConnectionBase):
             user = M.Users.create(**parms)
             user.save()
             LOG.debug("user %r created", email)
+            self.create_namespace(user.username, user.username, user.id)
         return user.id
 
     def create_milestone(self, **kwargs):

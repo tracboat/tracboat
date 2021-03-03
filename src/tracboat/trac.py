@@ -26,7 +26,8 @@ def _authors_collect(wiki=None, tickets=None):
         [ticket['attributes']['reporter'] for ticket in six.itervalues(tickets)] +
         [ticket['attributes']['owner'] for ticket in six.itervalues(tickets)] +
         [change['author'] for ticket in six.itervalues(tickets) for change in ticket['changelog']] +
-        [change['newvalue'] for ticket in six.itervalues(tickets) for change in ticket['changelog'] if change['field'] in ['cc', 'owner']]
+        [change['newvalue'] for ticket in six.itervalues(tickets) for change in ticket['changelog'] if change['field'] == 'owner'] +
+        [value.strip() for ticket in six.itervalues(tickets) for change in ticket['changelog'] if change['field'] == 'cc' for value in change['newvalue'].split(',')]
     ))
 
 

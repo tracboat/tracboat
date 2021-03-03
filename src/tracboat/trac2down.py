@@ -216,8 +216,8 @@ def convert(text, base_path, multilines=True, note_map={}, attachments_path=None
         # not blockquote?
         if not line.startswith('    '):
             line = re.sub(r'\[(https?://[^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](\1)', line)
-            line = re.sub(r'\[(?<!!|wiki:)([^\]]+)]', r'[\1](\1)', line) # [WikiName] format
-            line = re.sub(r'\[(?<!!|wiki:)([^ \]]+) ([^\]]+)\]', r'[\2](\1)', line) # [WikiName Friendly name] format
+            line = re.sub(r'\[(?<!!|wiki:)([A-Z][a-z]+[a-z0-9]*[A-Z][^\ \]]*)\]', r'[\1](\1)', line) # [WikiName] format
+            line = re.sub(r'\[(?<!!|wiki:)([A-Z][a-z]+[a-z0-9]*[A-Z][^ \]]+) ([^\]]+)\]', r'[\2](\1)', line) # [WikiName Friendly name] format
             line = re.sub(r'\[wiki:([^\s\[\]]+)\s([^\[\]]+)\]', r'[\2](%s/\1)' % os.path.relpath('/wikis/', base_path), line)
             line = re.sub(r'\[wiki:([^\s\[\]]+)\]', r'[\1](\1)', line)
             line = re.sub(r'\!(([A-Z][a-z0-9]+){2,})', r'\1', line)
