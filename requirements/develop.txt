@@ -50,7 +50,7 @@ pluggy==0.4.0
     # via tox
 psycopg2==2.7.6.1
     # via -r requirements/src/dist.in
-py==1.4.33
+py==1.10.0
     # via
     #   pytest
     #   pytest-catchlog
