@@ -22,6 +22,7 @@ import toml
 from bson import json_util
 from six.moves.urllib import parse as urllib  # pylint: disable=import-error
 
+from .dataloader import DataLoader
 from . import VERSION
 from . import migrate as trac_migrate
 from . import trac
@@ -36,18 +37,6 @@ CONTEXT_SETTINGS = {
 ################################################################################
 # utils
 ################################################################################
-
-def _dumps(obj, fmt=None):
-    if fmt == 'toml':
-        return toml.dumps(obj)
-    elif fmt == 'json':
-        return json.dumps(obj, sort_keys=True, indent=2, default=json_util.default)
-    elif fmt == 'python':
-        return pformat(obj, indent=2)
-    elif fmt == 'pickle':
-        return pickle.dumps(obj)
-    else:
-        return str(obj)
 
 
 def _detect_format(filename):
@@ -260,18 +249,17 @@ def users(ctx, trac_uri, ssl_verify, from_export_file):
 @click.pass_context
 def export(ctx, trac_uri, ssl_verify, format, out_file):  # pylint: disable=redefined-builtin
     """export a complete Trac instance"""
-    LOG = logging.getLogger(ctx.info_name)
-    #
-    LOG.info('crawling Trac instance: %s', _sanitize_url(trac_uri))
+
+    logger = logging.getLogger(ctx.info_name)
     source = trac.connect(trac_uri, encoding='UTF-8', use_datetime=True, ssl_verify=ssl_verify)
-    project = trac.project_get(source, collect_authors=True)
-    project = _dumps(project, fmt=format)
+    logger.info('Crawling Trac instance: %s', _sanitize_url(trac_uri))
+    loader = DataLoader(trac=source, logger=logger, format=format)
+
     if out_file:
-        LOG.info('writing export to %s', out_file)
-        with codecs.open(out_file, 'wb', encoding='utf-8') as out_f:
-            out_f.write(project)
+        logger.info('writing export to %s', out_file)
+        loader.write_file(out_file)
     else:
-        click.echo(project)
+        click.echo(loader.dump())
 
 
 @cli.command()
