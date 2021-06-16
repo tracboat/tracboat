@@ -10,25 +10,26 @@ ver=$(echo "$version" | cut -d. -f1,2 | tr -d .)
 model=src/tracboat/gitlab/model/model$ver.py
 sudo -H -u git VENV/bin/pwiz.py -u gitlab --engine=postgresql --host=/var/opt/gitlab/postgresql gitlabhq_production > $model
 
-patch -R $model <<EOF
---- src/tracboat/gitlab/model/model104.py	2018-01-02 20:52:44.144989068 +0200
-+++ src/tracboat/gitlab/model/model104.py	2018-02-07 13:29:43.314348521 +0200
-@@ -1,15 +1,13 @@
--# -*- coding: utf-8 -*-
--
+patch -p1 $model <<EOF
+--- tracboat/src/tracboat/gitlab/model/model1110.py~	2019-04-29 18:09:04.610256015 +0300
++++ tracboat/src/tracboat/gitlab/model/model1110.py	2019-04-29 18:09:47.605995257 +0300
+@@ -1,14 +1,16 @@
++# -*- coding: utf-8 -*-
++
  from peewee import *
+ from playhouse.postgres_ext import *
  
--database_proxy = Proxy()
-+database = PostgresqlDatabase('gitlabhq_production', **{'host': '/var/opt/gitlab/postgresql', 'user': 'gitlab'})
+-database = PostgresqlDatabase('gitlabhq_production', **{'host': '/var/opt/gitlab/postgresql', 'user': 'gitlab'})
++database_proxy = Proxy()
  
  class UnknownField(object):
--    pass
-+    def __init__(self, *_, **__): pass
+-    def __init__(self, *_, **__): pass
++    pass
  
  class BaseModel(Model):
      class Meta:
--        database = database_proxy
-+        database = database
+-        database = database
++        database = database_proxy
  
  class AbuseReports(BaseModel):
      cached_markdown_version = IntegerField(null=True)
